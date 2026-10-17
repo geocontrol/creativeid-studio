@@ -1,0 +1,25 @@
+{
+  "name": "creative-passport",
+  "version": "0.1.0",
+  "description": "Local-first tool to create and publish your creative persona dataset to AT Protocol, Solid, and static web stores.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
+    "start": "node --import tsx src/index.ts"
+  },
+  "keywords": [
+    "local-first",
+    "creative-passport",
+    "atproto",
+    "solid",
+    "json-ld",
+    "persona"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
