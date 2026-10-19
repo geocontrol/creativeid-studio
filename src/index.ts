@@ -7,6 +7,7 @@ export * from "./transformers.js";
 export * from "./store.js";
 export * from "./adapters/index.js";
 export * from "./server.js";
+export * from "./model/index.js";
 
 const isMain = (() => {
   try {

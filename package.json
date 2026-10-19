@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "test": "node --import tsx --test test/*.test.ts",
-    "start": "node --import tsx src/index.ts"
+    "start": "node --import tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "keywords": [
     "local-first",

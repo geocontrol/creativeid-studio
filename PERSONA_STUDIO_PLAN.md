@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: draft for review · 2026-10-19
+Status: M0–M2 done · 2026-10-19
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -88,32 +88,40 @@ Replace the single `Person` (name + bio) with a small JSON-LD graph per persona.
 
 ### Local document: `data/personas/<personaId>.jsonld`
 
+As built (`src/model/`). Profile and work properties use schema.org terms where one fits (`identifier` as `PropertyValue`, `homeLocation` as `Place`); everything else is a `creativeid:` term.
+
 ```json
 {
   "@context": { "@vocab": "https://schema.org/",
                 "foaf": "http://xmlns.com/foaf/0.1/",
                 "creativeid": "https://www.cultureblocs.com/ns/creativeid#" },
+  "creativeid:schemaVersion": 2,
+  "creativeid:personaId": "laurie-spiegel-ab2c",
   "@graph": [
     { "@id": "#me", "@type": ["Person", "creativeid:Persona"],
       "name": "…", "description": "…",
       "knowsAbout": ["sculpture", "sound design"],
-      "homeLocation": { "name": "Peckham, London" },
-      "url": [{ "uri": "https://…", "title": "Website" }],
-      "identifier": [{ "scheme": "orcid", "id": "0000-…" }],
+      "homeLocation": { "@type": "Place", "name": "Peckham, London" },
+      "creativeid:links": [{ "@type": "WebPage", "url": "https://…", "name": "Website" }],
+      "identifier": [{ "@type": "PropertyValue", "propertyID": "orcid", "value": "0000-…" }],
       "dateCreated": "…", "dateModified": "…" },
-    { "@id": "#work-3l4k2j…", "@type": ["CreativeWork", "creativeid:Work"],
+    { "@id": "#work-3l4k2jxyz2222", "@type": ["CreativeWork", "creativeid:Work"],
       "name": "Untitled (Peckham)", "url": "https://…",
       "creativeid:completionDate": "Spring 2024", "description": "…",
-      "creativeid:credits": [{ "name": "…", "did": "did:plc:…", "role": "lighting design" }],
-      "keywords": ["…"], "identifier": [], "creativeid:links": [] },
-    { "@id": "#claim-3l4k3a…", "@type": "creativeid:Connection",
-      "creativeid:subject": { "did": "did:plc:…" } ,
-      "creativeid:relationship": "performed", "creativeid:role": "…", "creativeid:note": "…" }
+      "creativeid:credits": [{ "@type": "creativeid:Credit", "name": "…",
+                               "creativeid:did": "did:plc:…", "creativeid:role": "lighting design" }],
+      "keywords": ["…"], "dateCreated": "…", "dateModified": "…" },
+    { "@id": "#claim-3l4k3a2222222", "@type": "creativeid:Connection",
+      "creativeid:subject": { "creativeid:did": "did:plc:…" },
+      "creativeid:relationship": "performed", "creativeid:role": "…", "creativeid:note": "…",
+      "dateCreated": "…", "dateModified": "…" }
   ],
   "creativeid:private": { "legalName": "…", "bookingContact": "…" },
   "creativeid:publications": { "atproto": { "did": "…", "records": { "<localId>": { "uri": "…", "cid": "…", "rkey": "…" } } } }
 }
 ```
+
+The API and UI never see these key names: every node has a plain *input* shape (`ProfileInput`, `WorkInput`, `ConnectionInput`, with lexicon-style names such as `bio`, `disciplines`, `externalIds`) and the model converts both ways.
 
 ### Rules
 
@@ -126,12 +134,16 @@ Replace the single `Person` (name + bio) with a small JSON-LD graph per persona.
 - **Private block.** `creativeid:private` holds anything the wizard marks "Only me" or "Shared". Transformers never read it, and a unit test checks this. Tier-4 material belongs here in future.
 - **Publication state** (`creativeid:publications`) is local-only and stripped from every output, as `cp:publications` is today.
 
-### Code
+### Code (done 2026-10-19)
 
-- `src/schema.ts`: types `Persona`, `Work`, `Connection`, `PersonaDocument`; `validate*` functions for each; constructors `createPersona`, `addWork`, `addConnection`, `update*`, `remove*`; a TID generator (in-house, ~20 lines: microsecond timestamp + clock id, base32-sortable).
-- Remove `ValidationIssue.field: "name" | "biography"` and use a path string instead (`works[2].title`).
+- `src/model/limits.ts`: lexicon limits, known relationships and ID schemes.
+- `src/model/tid.ts`: TID generator (microseconds + 10-bit clock id, base32-sortable, monotonic).
+- `src/model/types.ts`: node and input types, `PersonaDocument`, `PublicPersonaDocument`, `Issue` (path-based, e.g. `works[2].title`), `ValidationReport` (errors block, warnings don't).
+- `src/model/persona.ts`: `createPersonaDocument`, `updateProfile`, `addWork` / `updateWork` / `removeWork`, `addConnection` / `updateConnection` / `removeConnection`, `setPrivateField`, `validateDocument` (for files read from disk), `toPublicDocument` (the only route to anything public), `fromV1` (v1 import, old publication state kept under `legacyV1`), `makePersonaId`. All pure; updates replace every editable field (PUT semantics).
+- `src/schema.ts` (v1) stays until M3 moves the store and server over, then is deleted.
+- `npm run typecheck` now type-checks the tests too.
 
-**Exit:** unit tests cover each limit, the TID's ordering and format, and that the private block never leaks.
+**Exit:** unit tests cover each limit, the TID's ordering and format, and that the private block never leaks. ✅ `test/m2-model.test.ts`, 26 tests.
 
 ---
 
