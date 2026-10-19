@@ -30,30 +30,30 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
       const store = new PersonaStore(join(tmpDir, "data", "persona.jsonld"));
       await store.save(samplePersona);
 
-      const jsonLdPath = join(tmpDir, "exports", "passport.jsonld");
+      const jsonLdPath = join(tmpDir, "exports", "creativeid.jsonld");
       const pubTime = new Date("2026-10-17T15:30:00.000Z");
       const result = await publishStaticExport(samplePersona, {
         outputPath: jsonLdPath,
         format: "jsonld",
-        publicUrl: "https://oram.example/passport.jsonld#me",
+        publicUrl: "https://oram.example/creativeid.jsonld#me",
         now: pubTime,
       });
 
       assert.equal(result.contentType, "application/ld+json");
-      assert.equal(result.status.uri, "https://oram.example/passport.jsonld#me");
+      assert.equal(result.status.uri, "https://oram.example/creativeid.jsonld#me");
       assert.equal(result.status.publishedAt, "2026-10-17T15:30:00.000Z");
 
       const onDisk = JSON.parse(await readFile(jsonLdPath, "utf8"));
-      assert.equal(onDisk["@id"], "https://oram.example/passport.jsonld#me");
+      assert.equal(onDisk["@id"], "https://oram.example/creativeid.jsonld#me");
       assert.equal(onDisk.name, "Daphne Oram");
-      assert.equal("cp:publications" in onDisk, false);
+      assert.equal("creativeid:publications" in onDisk, false);
 
       // Also verify Turtle static export
-      const ttlPath = join(tmpDir, "exports", "passport.ttl");
+      const ttlPath = join(tmpDir, "exports", "creativeid.ttl");
       const ttlResult = await publishStaticExport(samplePersona, {
         outputPath: ttlPath,
         format: "turtle",
-        publicUrl: "https://oram.example/passport.ttl#me",
+        publicUrl: "https://oram.example/creativeid.ttl#me",
         now: pubTime,
       });
       assert.equal(ttlResult.contentType, "text/turtle");
@@ -61,8 +61,8 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
 
       const updated = await store.recordPublication("static", result.status);
       assert.equal(
-        updated["cp:publications"]?.static?.uri,
-        "https://oram.example/passport.jsonld#me"
+        updated["creativeid:publications"]?.static?.uri,
+        "https://oram.example/creativeid.jsonld#me"
       );
     } finally {
       await rm(tmpDir, { recursive: true, force: true });
@@ -198,7 +198,7 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
 
     const pubTime = new Date("2026-10-17T15:36:00.000Z");
     const turtleResult = await publishToSolid(samplePersona, {
-      resourceUrl: "https://daphne.solidcommunity.net/public/passport.ttl",
+      resourceUrl: "https://daphne.solidcommunity.net/public/creativeid.ttl",
       format: "turtle",
       authToken: "solid-token-123",
       fetchImpl: mockSolidFetch,
@@ -208,11 +208,11 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
     assert.equal(turtleResult.contentType, "text/turtle");
     assert.equal(
       turtleResult.status.uri,
-      "https://daphne.solidcommunity.net/public/passport.ttl#me"
+      "https://daphne.solidcommunity.net/public/creativeid.ttl#me"
     );
 
     const fetchedTurtle = await fetchFromSolid(
-      "https://daphne.solidcommunity.net/public/passport.ttl#me",
+      "https://daphne.solidcommunity.net/public/creativeid.ttl#me",
       mockSolidFetch
     );
     assert.equal(fetchedTurtle.contentType, "text/turtle");
@@ -220,7 +220,7 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
 
     // Also test JSON-LD inference from .jsonld extension
     const jsonldResult = await publishToSolid(samplePersona, {
-      resourceUrl: "https://daphne.solidcommunity.net/public/passport.jsonld",
+      resourceUrl: "https://daphne.solidcommunity.net/public/creativeid.jsonld",
       authToken: "solid-token-123",
       fetchImpl: mockSolidFetch,
       now: pubTime,
@@ -229,7 +229,7 @@ describe("Milestone 2: Protocol Publishing Adapters (Static, ATProto, Solid)", (
     const parsedJsonLd = JSON.parse(jsonldResult.content);
     assert.equal(
       parsedJsonLd["@id"],
-      "https://daphne.solidcommunity.net/public/passport.jsonld#me"
+      "https://daphne.solidcommunity.net/public/creativeid.jsonld#me"
     );
   });
 });

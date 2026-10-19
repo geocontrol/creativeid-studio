@@ -1,14 +1,16 @@
-# Creative Passport (v1)
+# CreativeID Studio (v1)
+
+> Formerly the **Creative Passport** prototype, renamed to CreativeID on 2026-10-19. See [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md) for where it is heading.
 
 A **local-first** studio and dataset publisher for authoring your creative persona (Name & Biography) as canonical Linked Data (`JSON-LD`) and publishing it to:
 - **AT Protocol PDS** (`org.creativepassport.actor.persona` Lexicon record)
 - **Solid Data Pods** (`text/turtle` or `application/ld+json` via HTTP `PUT`)
-- **Static Dataset Files** (`passport.jsonld` / `passport.ttl` for personal domains, GitHub Pages, S3, or IPFS)
+- **Static Dataset Files** (`creativeid.jsonld` / `creativeid.ttl` for personal domains, GitHub Pages, S3, or IPFS)
 
 ## Quick Start
 
 ```bash
-cd ~/Projects/CreativePassport
+cd ~/Projects/creativeid-studio
 npm install
 npm start
 ```

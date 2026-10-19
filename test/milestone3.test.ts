@@ -7,7 +7,7 @@ import { AddressInfo } from "node:net";
 import { Server } from "node:http";
 
 import {
-  createPassportServer,
+  createStudioServer,
   fetchFromAtproto,
   fetchFromSolid,
   PersonaStore,
@@ -23,7 +23,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     const store = new PersonaStore(join(tmpDir, "data", "persona.jsonld"));
     const exportDir = join(tmpDir, "data", "exports");
 
-    server = createPassportServer({ store, exportDir });
+    server = createStudioServer({ store, exportDir });
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -43,7 +43,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type") ?? "", /text\/html/);
     const html = await res.text();
-    assert.match(html, /Creative Passport/);
+    assert.match(html, /CreativeID/);
 
     const jsRes = await fetch(`${baseUrl}/app.js`);
     assert.equal(jsRes.status, 200);
@@ -92,7 +92,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         format: "jsonld",
-        publicUrl: "https://spiegel.example/passport.jsonld#laurie",
+        publicUrl: "https://spiegel.example/creativeid.jsonld#laurie",
       }),
     });
     assert.equal(staticRes.status, 200);
@@ -101,7 +101,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     };
     assert.equal(
       staticJson.result.status.uri,
-      "https://spiegel.example/passport.jsonld#laurie"
+      "https://spiegel.example/creativeid.jsonld#laurie"
     );
 
     // Verify file download endpoint
@@ -116,7 +116,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         pdsUrl: `${baseUrl}/sandbox/atproto`,
-        identifier: "laurie.creativepassport.local",
+        identifier: "laurie.creativeid.local",
         password: "app-password-123",
       }),
     });
@@ -126,7 +126,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     };
     assert.match(
       atprotoJson.result.status.uri,
-      /^at:\/\/did:plc:sandboxlauriecreativepassportlocal\/org\.creativepassport\.actor\.persona\/self$/
+      /^at:\/\/did:plc:sandboxlauriecreativeidlocal\/org\.creativepassport\.actor\.persona\/self$/
     );
 
     const verifiedAtproto = await fetchFromAtproto(
@@ -136,7 +136,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     assert.equal(verifiedAtproto.value.name, "Laurie Spiegel");
 
     // 3. Solid Pod end-to-end publish & readback
-    const solidTarget = `${baseUrl}/sandbox/solid/public/passport.ttl`;
+    const solidTarget = `${baseUrl}/sandbox/solid/public/creativeid.ttl`;
     const solidRes = await fetch(`${baseUrl}/api/publish/solid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -149,12 +149,12 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     assert.equal(solidRes.status, 200);
     const solidJson = (await solidRes.json()) as {
       result: { status: { uri: string } };
-      persona: { "cp:publications": Record<string, { uri: string }> };
+      persona: { "creativeid:publications": Record<string, { uri: string }> };
     };
     assert.equal(solidJson.result.status.uri, `${solidTarget}#me`);
 
     // Verify all 3 publications are recorded on the canonical local persona
-    const pubs = solidJson.persona["cp:publications"];
+    const pubs = solidJson.persona["creativeid:publications"];
     assert.ok(pubs.static);
     assert.ok(pubs.atproto);
     assert.ok(pubs.solid);

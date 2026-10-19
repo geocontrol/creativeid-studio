@@ -47,7 +47,7 @@ code, pre {
   gap: 0.9rem;
 }
 
-.passport-emblem {
+.persona-emblem {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -305,44 +305,44 @@ input:focus, textarea:focus, select:focus {
   color: #f87171;
 }
 
-/* Visual Passport Card */
-.passport-card {
+/* Visual Persona Card */
+.persona-card {
   background: linear-gradient(155deg, #192336 0%, #131c2b 100%);
   border: 1px solid #354969;
 }
 
-.passport-card-header {
+.persona-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.6rem;
 }
 
-.passport-stamp {
+.persona-stamp {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   font-weight: 700;
   color: #60a5fa;
 }
 
-.passport-id {
+.persona-id {
   font-size: 0.76rem;
   color: var(--muted);
   font-family: monospace;
 }
 
-.passport-name {
+.persona-name {
   margin: 0 0 0.4rem;
   font-size: 1.4rem;
 }
 
-.passport-bio {
+.persona-bio {
   margin: 0 0 1rem;
   color: #d1d9e8;
   white-space: pre-wrap;
 }
 
-.passport-meta {
+.persona-meta {
   font-size: 0.78rem;
   color: var(--muted);
   border-top: 1px solid var(--border);

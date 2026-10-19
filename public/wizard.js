@@ -2,9 +2,9 @@
 // a Solid Pod, static hosting, or a combination. Pure client-side; answers
 // are persisted to localStorage so the guide survives reloads.
 
-const STORAGE_KEY = "cp.storageGuide.v1";
+const STORAGE_KEY = "creativeid.storageGuide.v1";
 
-/** Field groups a Creative Passport may contain, with a sensible default visibility. */
+/** Field groups a CreativeID persona may contain, with a sensible default visibility. */
 const FIELD_GROUPS = [
   { id: "identity", label: "Name, biography & genres", hint: "Your public creative identity", default: "public", included: true },
   { id: "links", label: "Website, socials & press photos", hint: "Links and promotional assets", default: "public", included: true },
@@ -81,7 +81,7 @@ const QUESTIONS = [
   },
   {
     id: "change",
-    q: "How often will your passport change?",
+    q: "How often will your persona change?",
     options: [
       { v: "rarely", label: "Rarely", s: { static: 1 } },
       { v: "often", label: "Often (tours, releases, availability)", s: { pds: 1, solid: 1, static: -1 } },
@@ -89,7 +89,7 @@ const QUESTIONS = [
   },
   {
     id: "durable",
-    q: "Should your passport keep working if one provider disappears?",
+    q: "Should your persona keep working if one provider disappears?",
     options: [
       { v: "yes", label: "Yes, keep a backup copy", s: { static: 1 } },
       { v: "no", label: "One place is fine", s: {} },
@@ -181,7 +181,7 @@ function pickPattern(stores) {
   const patterns = {
     "pds": { title: "AT Protocol PDS", tag: "Discoverable & signed", text: "Everything you plan to share is public, and you want to be found. Publish a signed Lexicon record to your PDS and every AT Protocol app and aggregator can discover it in real time." },
     "solid": { title: "Solid Pod with public & private containers", tag: "Privacy-first", text: "Keep public details in your Pod's /public/ container and protected details in containers you grant to specific people or organisations. Ping the aggregator so you can be found." },
-    "static": { title: "Static file on the web", tag: "Simplest & most durable", text: "Host a single JSON-LD file at /.well-known/creative-passport.jsonld. Nothing to log into, almost free, and it lasts as long as your domain does." },
+    "static": { title: "Static file on the web", tag: "Simplest & most durable", text: "Host a single JSON-LD file at /.well-known/creativeid.jsonld. Nothing to log into, almost free, and it lasts as long as your domain does." },
     "pds+static": { title: "PDS + static mirror on your domain", tag: "Discoverable & resilient", text: "Publish to your PDS for network discovery, and mirror the same public data on your own domain. Use the domain as your AT Protocol handle so both point at one identity." },
     "pds+solid": { title: "Public on PDS, private on Solid", tag: "Best of both ⭐", text: "Your public persona lives on the PDS where everyone can discover it. Sensitive details live in your Solid Pod, and your PDS record points to them. Partners request access; you grant or revoke it per WebID." },
     "solid+static": { title: "Solid for private, static for public", tag: "Private + durable", text: "A static file on your domain carries your public persona; your Solid Pod holds access-controlled details for specific partners." },
@@ -208,7 +208,7 @@ function pickProviders(stores, a) {
   }
   if (stores.includes("static")) {
     out.static = a.domain === "yes"
-      ? { name: "Your own domain", detail: "Serve /.well-known/creative-passport.jsonld with CORS", url: null }
+      ? { name: "Your own domain", detail: "Serve /.well-known/creativeid.jsonld with CORS", url: null }
       : { name: "GitHub Pages / Cloudflare Pages", detail: "Free static hosting; add a domain later", url: "https://pages.github.com" };
   }
   return out;
@@ -225,7 +225,7 @@ function buildWarnings({ stores, needsAccessControl, answers, publicF }) {
     w.push({ level: "warn", text: "Solid login (Solid-OIDC) and access control take a bit more setup. Consider asking your manager or label to help." });
   }
   if (stores.includes("static") && !stores.includes("pds")) {
-    w.push({ level: "info", text: "Static files aren't announced to anyone. Ping the Creative Passport Aggregator after publishing so you can be found." });
+    w.push({ level: "info", text: "Static files aren't announced to anyone. Ping the CreativeID Aggregator after publishing so you can be found." });
   }
   if (!publicF.length) {
     w.push({ level: "info", text: "You have no public fields, so nothing will be discoverable. That's fine if you only share with specific partners." });
@@ -238,9 +238,9 @@ function buildSteps({ stores, hasDomain, providers }) {
   if (stores.includes("pds")) s.push(`Create an App Password with ${providers.pds.name} and publish via the AT Protocol PDS card.`);
   if (stores.includes("pds") && hasDomain) s.push("Set your domain as your AT Protocol handle (DNS TXT record _atproto).");
   if (stores.includes("solid")) s.push(`Register a pod with ${providers.solid.name}. Put public data in /public/ and protected data in a separate container with access rules.`);
-  if (stores.includes("static")) s.push("Export a static JSON-LD file and upload it to /.well-known/creative-passport.jsonld.");
+  if (stores.includes("static")) s.push("Export a static JSON-LD file and upload it to /.well-known/creativeid.jsonld.");
   if (stores.length > 1) s.push("Cross-link your stores with sameAs (DID ↔ WebID ↔ URL) so aggregators know it's all you.");
-  s.push("Ping the Creative Passport Aggregator so directories can find you straight away.");
+  s.push("Ping the CreativeID Aggregator so directories can find you straight away.");
   return s;
 }
 

@@ -1,6 +1,6 @@
 /**
  * AT Protocol PDS Adapter (`src/adapters/atproto.ts`)
- * Publishes and reads a Creative Passport persona record (`org.creativepassport.actor.persona`)
+ * Publishes and reads a CreativeID persona record (`org.creativepassport.actor.persona`)
  * on an AT Protocol Personal Data Server (PDS) via XRPC.
  */
 
@@ -163,7 +163,7 @@ export async function publishToAtproto(
 }
 
 /**
- * Reads a published Creative Passport record from an AT Protocol PDS via `com.atproto.repo.getRecord`.
+ * Reads a published CreativeID record from an AT Protocol PDS via `com.atproto.repo.getRecord`.
  */
 export async function fetchFromAtproto(
   pdsUrl: string,

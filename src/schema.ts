@@ -1,11 +1,11 @@
 /**
- * Canonical JSON-LD Schema and Validation for Creative Passport v1
+ * Canonical JSON-LD Schema and Validation for CreativeID v1
  */
 
-export const CREATIVE_PASSPORT_CONTEXT = {
+export const CREATIVEID_CONTEXT = {
   "@vocab": "https://schema.org/",
   foaf: "http://xmlns.com/foaf/0.1/",
-  cp: "https://creativepassport.org/ns#",
+  creativeid: "https://www.cultureblocs.com/ns/creativeid#",
 } as const;
 
 export const ATPROTO_COLLECTION_NSID = "org.creativepassport.actor.persona";
@@ -31,14 +31,14 @@ export interface PublicationsMap {
 }
 
 export interface CanonicalPersona {
-  "@context": typeof CREATIVE_PASSPORT_CONTEXT;
+  "@context": typeof CREATIVEID_CONTEXT;
   "@id": string;
-  "@type": ["Person", "cp:CreativePersona"];
+  "@type": ["Person", "creativeid:Persona"];
   name: string;
   description: string;
   dateCreated: string;
   dateModified: string;
-  "cp:publications"?: PublicationsMap;
+  "creativeid:publications"?: PublicationsMap;
 }
 
 export interface PersonaInput {
@@ -132,14 +132,14 @@ export function createCanonicalPersona(
 
   const timestamp = now.toISOString();
   return {
-    "@context": CREATIVE_PASSPORT_CONTEXT,
+    "@context": CREATIVEID_CONTEXT,
     "@id": input.id?.trim() || "#me",
-    "@type": ["Person", "cp:CreativePersona"],
+    "@type": ["Person", "creativeid:Persona"],
     name: input.name.trim(),
     description: input.biography.trim(),
     dateCreated: timestamp,
     dateModified: timestamp,
-    "cp:publications": {},
+    "creativeid:publications": {},
   };
 }
 
@@ -156,9 +156,9 @@ export function updateCanonicalPersona(
 
   return {
     ...existing,
-    "@context": CREATIVE_PASSPORT_CONTEXT,
+    "@context": CREATIVEID_CONTEXT,
     "@id": input.id?.trim() || existing["@id"] || "#me",
-    "@type": ["Person", "cp:CreativePersona"],
+    "@type": ["Person", "creativeid:Persona"],
     name: input.name.trim(),
     description: input.biography.trim(),
     dateModified: now.toISOString(),

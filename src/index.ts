@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createPassportServer } from "./server.js";
+import { createStudioServer } from "./server.js";
 
 export * from "./schema.js";
 export * from "./transformers.js";
@@ -20,10 +20,10 @@ const isMain = (() => {
 
 if (isMain) {
   const port = Number(process.env.PORT || 3400);
-  const server = createPassportServer();
+  const server = createStudioServer();
   server.listen(port, "127.0.0.1", () => {
     console.log(
-      `Creative Passport local-first server running at http://localhost:${port}`
+      `CreativeID Studio local-first server running at http://localhost:${port}`
     );
   });
 }

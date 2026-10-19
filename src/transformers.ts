@@ -9,13 +9,13 @@
 import {
   ATPROTO_COLLECTION_NSID,
   CanonicalPersona,
-  CREATIVE_PASSPORT_CONTEXT,
+  CREATIVEID_CONTEXT,
 } from "./schema.js";
 
 export interface PublicPersonaJsonLd {
-  "@context": typeof CREATIVE_PASSPORT_CONTEXT;
+  "@context": typeof CREATIVEID_CONTEXT;
   "@id": string;
-  "@type": ["Person", "cp:CreativePersona"];
+  "@type": ["Person", "creativeid:Persona"];
   name: string;
   description: string;
   "foaf:name": string;
@@ -39,9 +39,9 @@ export function toPublicJsonLd(
   subjectUri?: string
 ): PublicPersonaJsonLd {
   return {
-    "@context": CREATIVE_PASSPORT_CONTEXT,
+    "@context": CREATIVEID_CONTEXT,
     "@id": subjectUri?.trim() || persona["@id"] || "#me",
-    "@type": ["Person", "cp:CreativePersona"],
+    "@type": ["Person", "creativeid:Persona"],
     name: persona.name,
     description: persona.description,
     "foaf:name": persona.name,
@@ -95,11 +95,11 @@ export function toSolidTurtle(
   return [
     "@prefix schema: <https://schema.org/> .",
     "@prefix foaf: <http://xmlns.com/foaf/0.1/> .",
-    "@prefix cp: <https://creativepassport.org/ns#> .",
+    "@prefix creativeid: <https://www.cultureblocs.com/ns/creativeid#> .",
     "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .",
     "",
     `${formattedSubject}`,
-    "  a schema:Person, foaf:Person, cp:CreativePersona ;",
+    "  a schema:Person, foaf:Person, creativeid:Persona ;",
     `  schema:name "${nameLit}" ;`,
     `  foaf:name "${nameLit}" ;`,
     `  schema:description "${bioLit}" ;`,

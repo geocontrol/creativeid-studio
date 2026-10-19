@@ -13,7 +13,7 @@ import { toPublicJsonLd, toSolidTurtle } from "../transformers.js";
 export type StaticExportFormat = "jsonld" | "turtle";
 
 export interface StaticExportOptions {
-  /** Target file path on disk (e.g. ./exports/passport.jsonld) */
+  /** Target file path on disk (e.g. ./exports/creativeid.jsonld) */
   outputPath: string;
   /** Serialization format: "jsonld" (default) or "turtle" */
   format?: StaticExportFormat;

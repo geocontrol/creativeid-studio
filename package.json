@@ -1,5 +1,5 @@
 {
-  "name": "creative-passport",
+  "name": "creativeid-studio",
   "version": "0.1.0",
   "description": "Local-first tool to create and publish your creative persona dataset to AT Protocol, Solid, and static web stores.",
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "keywords": [
     "local-first",
-    "creative-passport",
+    "creativeid",
     "atproto",
     "solid",
     "json-ld",

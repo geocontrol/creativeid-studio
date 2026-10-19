@@ -1,7 +1,7 @@
-# Creative Passport — Version 1 Scope & Architecture
+# CreativeID Studio — Version 1 Scope & Architecture
 
 ## 1. Vision & Core Concept
-**Creative Passport** is a local-first tool that empowers creators to author, own, and publish their creative persona as a portable, machine-readable dataset. 
+**CreativeID** is a local-first tool that empowers creators to author, own, and publish their creative persona as a portable, machine-readable dataset. 
 
 Instead of locking identity and biographical metadata inside platform silos, creators author a **canonical local persona** on their own machine first, and then publish it to decentralized or self-hosted data stores via pluggable protocol adapters.
 
@@ -22,7 +22,7 @@ Instead of locking identity and biographical metadata inside platform silos, cre
 3. **Canonical Data Model (JSON-LD)**
    - A single source-of-truth JSON-LD document using standard vocabularies (`schema.org/Person`, `foaf:Person`) so the local file is already valid Linked Data.
 4. **Pluggable Publishing Adapters**
-   - **Static JSON / JSON-LD Export**: Download or write a standalone `passport.jsonld` / `passport.json` file ready for hosting on a personal domain, GitHub Pages, or IPFS.
+   - **Static JSON / JSON-LD Export**: Download or write a standalone `creativeid.jsonld` / `creativeid.json` file ready for hosting on a personal domain, GitHub Pages, or IPFS.
    - **AT Protocol (PDS) Adapter**: Authenticate against an ATProto Personal Data Server (via handle + App Password or OAuth) and write a custom Lexicon record (e.g., `org.creativepassport.actor.persona`) via `com.atproto.repo.putRecord`.
    - **Solid Pod Adapter**: Authenticate or connect to a Solid Pod container/resource URL and `PUT` the persona as JSON-LD or Turtle (`text/turtle` / `application/ld+json`).
 
@@ -56,7 +56,7 @@ flowchart LR
     subgraph Targets["Published Data Stores"]
         File["Downloaded File /\nPersonal Domain"]
         PDS["ATProto PDS\n(at://did/org.creativepassport.actor.persona/self)"]
-        Pod["Solid Pod\n(https://pod.example/passport/card#me)"]
+        Pod["Solid Pod\n(https://pod.example/public/creativeid.ttl#me)"]
     end
 
     API --> Static --> File
@@ -76,21 +76,21 @@ Stored locally as valid JSON-LD using `schema.org` and `foaf` terms:
   "@context": {
     "@vocab": "https://schema.org/",
     "foaf": "http://xmlns.com/foaf/0.1/",
-    "cp": "https://creativepassport.org/ns#"
+    "cp": "https://www.cultureblocs.com/ns/creativeid#"
   },
   "@id": "#me",
-  "@type": ["Person", "cp:CreativePersona"],
+  "@type": ["Person", "creativeid:Persona"],
   "name": "Ada Lovelace",
   "description": "Analytical Engine pioneer exploring poetical science.",
   "dateModified": "2026-10-17T15:20:00Z",
-  "cp:publications": {
+  "creativeid:publications": {
     "atproto": {
       "uri": "at://did:plc:example/org.creativepassport.actor.persona/self",
       "cid": "bafyre...",
       "publishedAt": "2026-10-17T15:21:00Z"
     },
     "solid": {
-      "uri": "https://ada.solidcommunity.net/public/passport.jsonld#me",
+      "uri": "https://ada.solidcommunity.net/public/creativeid.jsonld#me",
       "publishedAt": "2026-10-17T15:22:00Z"
     }
   }
@@ -115,8 +115,8 @@ Published via XRPC `com.atproto.repo.putRecord`:
 
 ### 4.3 Solid Pod Mapping
 Because the canonical local schema is already valid JSON-LD (`application/ld+json`), the Solid adapter can:
-1. Strip local-only publication metadata (`cp:publications`).
-2. `PUT` the clean JSON-LD document (or serialize to Turtle `text/turtle`) directly to a target resource URL on the user's Solid Pod (e.g. `https://<pod>/public/creative-passport.ttl` or `.jsonld`).
+1. Strip local-only publication metadata (`creativeid:publications`).
+2. `PUT` the clean JSON-LD document (or serialize to Turtle `text/turtle`) directly to a target resource URL on the user's Solid Pod (e.g. `https://<pod>/public/creativeid.ttl` or `.jsonld`).
 
 ---
 

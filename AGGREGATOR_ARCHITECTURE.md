@@ -1,12 +1,12 @@
-# Creative Passport Aggregator & API Service — Architecture & Cost Analysis
+# CreativeID Aggregator & API Service — Architecture & Cost Analysis
 
 ## 1. The Core Architectural Challenge
-When artists self-host or publish their Creative Passport to different decentralized stores (**AT Protocol PDS**, **Solid Pods**, or **Static Domains**), a third-party service (e.g., a festival lineup site, music platform, or arts directory) cannot easily:
+When artists self-host or publish their CreativeID to different decentralized stores (**AT Protocol PDS**, **Solid Pods**, or **Static Domains**), a third-party service (e.g., a festival lineup site, music platform, or arts directory) cannot easily:
 1. Know which protocol an artist used.
 2. Perform full-text search across thousands of scattered Pods and PDSs in real time.
 3. Parse three different wire formats (`org.creativepassport.actor.persona` XRPC JSON, RDF Turtle, and JSON-LD) on every request.
 
-To solve this, you build an **Aggregator / Indexer Service** (called an **AppView** in AT Protocol terminology). It **discovers or ingests** records from all supported protocols, **normalizes** them back into the canonical Creative Passport schema, **indexes** them in a fast local database (SQLite/FTS5 or Postgres), and exposes a **unified low-latency API + demo search UI**.
+To solve this, you build an **Aggregator / Indexer Service** (called an **AppView** in AT Protocol terminology). It **discovers or ingests** records from all supported protocols, **normalizes** them back into the canonical CreativeID schema, **indexes** them in a fast local database (SQLite/FTS5 or Postgres), and exposes a **unified low-latency API + demo search UI**.
 
 ---
 
@@ -19,12 +19,12 @@ flowchart TB
     subgraph Sources["Artist Data Stores"]
         PDS["ATProto PDS\n(Bluesky / Eurosky / Self-Hosted)"]
         Solid["Solid Data Pod\n(Turtle / JSON-LD)"]
-        Static["Personal Domain\n(/.well-known/creative-passport.jsonld)"]
+        Static["Personal Domain\n(/.well-known/creativeid.jsonld)"]
     end
 
     subgraph Ingestion["Ingestion Strategies"]
-        M1["Pattern 1: Push / Ping Registration\n(Creative Passport pings Aggregator on publish)"]
-        M2["Pattern 2: ATProto Jetstream Firehose\n(Filtered WebSocket stream for org.creativepassport.*)"]
+        M1["Pattern 1: Push / Ping Registration\n(CreativeID pings Aggregator on publish)"]
+        M2["Pattern 2: ATProto Jetstream Firehose\n(Filtered WebSocket stream for org.creativeid.*)"]
         M3["Pattern 3: On-Demand Resolver + Cache\n(Resolve by DID / Handle / WebID / Domain on API call)"]
         M4["Pattern 4: Periodic Crawler / Conditional GET\n(ETag / Last-Modified polling for Solid & Static)"]
     end
@@ -45,9 +45,9 @@ flowchart TB
 ---
 
 ### Pattern 1: "WebSub / Ping-on-Publish" (Push Registration)
-When the artist clicks **Publish** in their local Creative Passport app, the local app (optionally) sends a lightweight notification to the Aggregator:
+When the artist clicks **Publish** in their local CreativeID app, the local app (optionally) sends a lightweight notification to the Aggregator:
 ```json
-POST https://api.creativepassport.org/v1/notify
+POST https://api.creativeid.org/v1/notify
 {
   "sourceType": "atproto" | "solid" | "static",
   "uri": "at://did:plc:.../org.creativepassport.actor.persona/self"
@@ -78,8 +78,8 @@ In AT Protocol, every public write to any federated PDS (Bluesky, Eurosky, or se
 A client calls your API with an artist identifier:
 - `GET /v1/artists/did:plc:12345`
 - `GET /v1/artists/ada.bsky.social`
-- `GET /v1/artists?uri=https://ada.solidcommunity.net/public/passport.ttl`
-- `GET /v1/artists/ada.example.com` (checks DNS TXT `_creativepassport.ada.example.com` or `https://ada.example.com/.well-known/creative-passport.jsonld`)
+- `GET /v1/artists?uri=https://ada.solidcommunity.net/public/creativeid.ttl`
+- `GET /v1/artists/ada.example.com` (checks DNS TXT `_creativeid.ada.example.com` or `https://ada.example.com/.well-known/creativeid.jsonld`)
 
 If the artist is not in cache (or TTL expired), the Aggregator resolves their store on the fly, normalizes the response, caches it with a TTL, and returns the unified JSON.
 
@@ -102,7 +102,7 @@ The sweet spot—maximizing decentralization while keeping infrastructure costs 
 ### How It Works Together:
 1. **Discovery**:
    - **ATProto**: A background **Jetstream WebSocket listener** (`wantedCollections=org.creativepassport.actor.persona`) automatically indexes every ATProto artist in real time.
-   - **Solid & Static (and instant ATProto)**: A `POST /v1/index` (Ping) endpoint that the local Creative Passport tool automatically calls right after publishing to a Solid Pod or Static URL.
+   - **Solid & Static (and instant ATProto)**: A `POST /v1/index` (Ping) endpoint that the local CreativeID tool automatically calls right after publishing to a Solid Pod or Static URL.
    - **On-Demand Lookup**: If someone requests `GET /v1/artists/:identifier` for an unindexed DID, handle, WebID, or domain, the API resolves it live and adds it to the index.
 2. **Verification & Normalization**:
    - **ATProto**: Resolves the DID via `plc.directory` or `did:web`, verifies the PDS endpoint, and fetches `org.creativepassport.actor.persona/self`.
@@ -111,7 +111,7 @@ The sweet spot—maximizing decentralization while keeping infrastructure costs 
    - Stores normalized artist records in **SQLite with FTS5** (Full-Text Search) or **PostgreSQL (`tsvector` + `pg_trgm`)**.
 4. **Public API Surface**:
    - `GET /v1/artists?q=<search>&protocol=<atproto|solid|static>&limit=20` — Full-text search across names and biographies.
-   - `GET /v1/artists/:id` — Fetch normalized Creative Passport by Aggregator ID, DID (`did:plc:...`), Handle (`alice.bsky.social`), WebID, or Domain.
+   - `GET /v1/artists/:id` — Fetch normalized CreativeID by Aggregator ID, DID (`did:plc:...`), Handle (`alice.bsky.social`), WebID, or Domain.
    - `POST /v1/index` — Submit/refresh an artist's URI (Ping-on-publish or manual registration).
    - `GET /` — Lightweight Demo Search & API Explorer UI.
 
@@ -149,12 +149,12 @@ Here are the three realistic deployment tiers depending on scale and operational
 | **ATProto Ingestion** | **Jetstream** filtered by `wantedCollections=org.creativepassport.actor.persona` (**$0 bandwidth**, <10 MB RAM) | Consuming the raw un-filtered Relay Firehose (`subscribeRepos`) (~1.5 TB/month ingress bandwidth + high CPU decoding CAR files) |
 | **Solid / Static Ingestion** | **Ping-on-Publish** (`POST /v1/index`) + **Conditional GET** (`ETag` / `304 Not Modified`) | Blindly re-downloading full RDF files every 5 minutes without `ETag` or backoff |
 | **Search Database** | **SQLite + FTS5** on local NVMe (or single Postgres instance) | Managed Elasticsearch / OpenSearch cluster ($100+/mo minimum) |
-| **Static Artist Hosting** | Standardize `https://<artist-domain>/.well-known/creative-passport.jsonld` | Requiring artists to configure custom CORS/headers on arbitrary paths |
+| **Static Artist Hosting** | Standardize `https://<artist-domain>/.well-known/creativeid.jsonld` | Requiring artists to configure custom CORS/headers on arbitrary paths |
 
 ---
 
-## 6. How Creative Passport Local Studio Connects to the Aggregator
-If we build this Aggregator service next (either as a companion repo or a module inside this workspace), we can add an optional **"Ping Aggregator Directory on Publish"** toggle in Creative Passport:
+## 6. How CreativeID Local Studio Connects to the Aggregator
+If we build this Aggregator service next (either as a companion repo or a module inside this workspace), we can add an optional **"Ping Aggregator Directory on Publish"** toggle in CreativeID:
 1. Artist saves their bio locally and publishes to **ATProto**, **Solid**, or **Static**.
-2. Creative Passport sends a 1-line `POST /v1/index` with the published URI to the Aggregator.
+2. CreativeID sends a 1-line `POST /v1/index` with the published URI to the Aggregator.
 3. The Aggregator verifies the remote record directly from the artist's store and makes the artist immediately searchable via the Aggregator API and Demo Search UI.

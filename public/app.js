@@ -80,7 +80,7 @@ function updateCounters() {
   els.cardBio.textContent =
     els.bioInput.value.trim() ||
     state.persona?.description ||
-    "Enter a name and biography above to preview and save your local Creative Passport.";
+    "Enter a name and biography above to preview and save your local CreativeID persona.";
   els.cardId.textContent = els.idInput.value.trim() || "#me";
 }
 
@@ -137,7 +137,7 @@ function applyServerState(data) {
     els.cardModified.textContent = new Date(
       state.persona.dateModified
     ).toLocaleString();
-    renderPublications(state.persona["cp:publications"] || {});
+    renderPublications(state.persona["creativeid:publications"] || {});
   } else {
     els.storageDot.classList.remove("saved");
     els.storageStatusText.textContent = "Not Yet Saved Locally";
@@ -212,14 +212,14 @@ els.personaForm.addEventListener("submit", async (e) => {
 // Sandbox helper buttons for immediate local testing
 els.atprotoSandboxBtn.addEventListener("click", () => {
   els.atprotoPds.value = `${window.location.origin}/sandbox/atproto`;
-  els.atprotoHandle.value = "ada.creativepassport.local";
+  els.atprotoHandle.value = "ada.creativeid.local";
   els.atprotoPassword.value = "sandbox-app-password";
   setStatus(els.atprotoStatus, "Configured for local ATProto PDS sandbox", "");
 });
 
 els.solidSandboxBtn.addEventListener("click", () => {
   const ext = els.solidFormat.value === "jsonld" ? "jsonld" : "ttl";
-  els.solidUrl.value = `${window.location.origin}/sandbox/solid/public/passport.${ext}`;
+  els.solidUrl.value = `${window.location.origin}/sandbox/solid/public/creativeid.${ext}`;
   els.solidToken.value = "sandbox-solid-token";
   setStatus(els.solidStatus, "Configured for local Solid Pod sandbox", "");
 });

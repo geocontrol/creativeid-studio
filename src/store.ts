@@ -95,8 +95,8 @@ export class PersonaStore {
 
     const updated: CanonicalPersona = {
       ...existing,
-      "cp:publications": {
-        ...(existing["cp:publications"] ?? {}),
+      "creativeid:publications": {
+        ...(existing["creativeid:publications"] ?? {}),
         [target]: status,
       },
     };

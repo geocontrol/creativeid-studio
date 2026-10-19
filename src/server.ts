@@ -1,6 +1,6 @@
 /**
  * Local-First HTTP Server & API (`src/server.ts`)
- * Serves the Creative Passport browser UI, local persona CRUD API,
+ * Serves the CreativeID browser UI, local persona CRUD API,
  * protocol publishing endpoints, and built-in local ATProto/Solid sandboxes.
  */
 
@@ -81,7 +81,7 @@ function buildPreviews(persona: CanonicalPersona | null) {
   };
 }
 
-export function createPassportServer(options: ServerOptions = {}): Server {
+export function createStudioServer(options: ServerOptions = {}): Server {
   const __dirname = fileURLToPath(new URL(".", import.meta.url));
   const projectRoot = resolve(__dirname, "..");
   const store =
@@ -194,7 +194,7 @@ export function createPassportServer(options: ServerOptions = {}): Server {
       }
 
       // -----------------------------------------------------------------------
-      // 3. Creative Passport Local API (/api/*)
+      // 3. CreativeID Local API (/api/*)
       // -----------------------------------------------------------------------
       if (pathname === "/api/persona" && method === "GET") {
         const persona = await store.load();
@@ -255,7 +255,7 @@ export function createPassportServer(options: ServerOptions = {}): Server {
           publicUrl
         );
         const filename =
-          format === "turtle" ? "passport.ttl" : "passport.jsonld";
+          format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
 
         res.writeHead(200, {
           "Content-Type": `${contentType}; charset=utf-8`,
@@ -282,7 +282,7 @@ export function createPassportServer(options: ServerOptions = {}): Server {
         const format: StaticExportFormat =
           body.format === "turtle" ? "turtle" : "jsonld";
         const defaultFilename =
-          format === "turtle" ? "passport.ttl" : "passport.jsonld";
+          format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
         const safeFilename = (body.filename || defaultFilename).replace(
           /[^a-zA-Z0-9._-]/g,
           "_"

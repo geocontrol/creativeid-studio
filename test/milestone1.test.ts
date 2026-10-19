@@ -47,7 +47,7 @@ describe("Milestone 1: Canonical Schema, Transformers, and Local Storage", () =>
     );
 
     assert.equal(persona["@id"], "#me");
-    assert.deepEqual(persona["@type"], ["Person", "cp:CreativePersona"]);
+    assert.deepEqual(persona["@type"], ["Person", "creativeid:Persona"]);
     assert.equal(persona.name, "Ada Lovelace");
     assert.equal(
       persona.description,
@@ -80,7 +80,7 @@ describe("Milestone 1: Canonical Schema, Transformers, and Local Storage", () =>
       },
       t0
     );
-    persona["cp:publications"] = {
+    persona["creativeid:publications"] = {
       atproto: {
         uri: "at://did:plc:123/org.creativepassport.actor.persona/self",
         cid: "bafyre123",
@@ -88,14 +88,14 @@ describe("Milestone 1: Canonical Schema, Transformers, and Local Storage", () =>
       },
     };
 
-    // 1. Public JSON-LD (strips local cp:publications)
+    // 1. Public JSON-LD (strips local creativeid:publications)
     const publicJsonLd = toPublicJsonLd(
       persona,
-      "https://ada.example/passport.jsonld#me"
+      "https://ada.example/creativeid.jsonld#me"
     );
-    assert.equal(publicJsonLd["@id"], "https://ada.example/passport.jsonld#me");
+    assert.equal(publicJsonLd["@id"], "https://ada.example/creativeid.jsonld#me");
     assert.equal(publicJsonLd["foaf:name"], "Ada Lovelace");
-    assert.equal("cp:publications" in publicJsonLd, false);
+    assert.equal("creativeid:publications" in publicJsonLd, false);
 
     // 2. AT Protocol Lexicon record
     const atprotoRecord = toAtprotoRecord(persona);
@@ -117,7 +117,7 @@ describe("Milestone 1: Canonical Schema, Transformers, and Local Storage", () =>
   });
 
   it("persists and updates persona and publication status via PersonaStore", async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), "creative-passport-test-"));
+    const tmpDir = await mkdtemp(join(tmpdir(), "creativeid-test-"));
     try {
       const filePath = join(tmpDir, "data", "persona.jsonld");
       const store = new PersonaStore(filePath);
@@ -140,7 +140,7 @@ describe("Milestone 1: Canonical Schema, Transformers, and Local Storage", () =>
       });
 
       assert.equal(
-        withPub["cp:publications"]?.atproto?.uri,
+        withPub["creativeid:publications"]?.atproto?.uri,
         "at://did:plc:eno/org.creativepassport.actor.persona/self"
       );
 

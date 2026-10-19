@@ -1,6 +1,6 @@
 /**
  * Solid Pod Adapter (`src/adapters/solid.ts`)
- * Publishes and reads a Creative Passport persona document on a Solid Pod
+ * Publishes and reads a CreativeID persona document on a Solid Pod
  * via HTTP PUT / GET (supporting both `text/turtle` and `application/ld+json`).
  */
 
@@ -10,7 +10,7 @@ import { toPublicJsonLd, toSolidTurtle } from "../transformers.js";
 export type SolidDocumentFormat = "turtle" | "jsonld";
 
 export interface SolidPublishOptions {
-  /** Target Solid resource URL (e.g. "https://alice.solidcommunity.net/public/passport.ttl") */
+  /** Target Solid resource URL (e.g. "https://alice.solidcommunity.net/public/creativeid.ttl") */
   resourceUrl: string;
   /** Serialization format: "turtle" (default for Solid) or "jsonld" */
   format?: SolidDocumentFormat;
@@ -104,7 +104,7 @@ export async function publishToSolid(
 }
 
 /**
- * Reads a published Creative Passport resource from a Solid Pod via HTTP GET.
+ * Reads a published CreativeID resource from a Solid Pod via HTTP GET.
  */
 export async function fetchFromSolid(
   resourceUrl: string,
