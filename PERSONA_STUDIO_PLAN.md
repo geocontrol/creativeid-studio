@@ -1,0 +1,269 @@
+# Plan: CreativePassport → CreativeID Persona Studio
+
+Status: draft for review · 2026-10-19
+Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
+Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
+
+## Outcome
+
+When this plan is done:
+
+- **CreativeID Studio** is a local-first app (still `localhost:3400`). It holds **several personas**, each with a profile, works and connections. It runs fully offline and needs no account.
+- Publishing writes the existing CultureBlocs lexicons: `com.cultureblocs.creative.profile`, `.work` and `.connection`. The `org.creativepassport.*` lexicon is gone.
+- Static `/.well-known/creativeid.jsonld` and Solid publishing keep working, now with the full persona graph.
+- **CreativeID Aggregator** (still `localhost:3500`) indexes all three record types and can be searched by discipline as well as by name. It reports closed loops as facts, not badges.
+- Nothing anywhere says "Creative Passport".
+
+## Decisions this plan assumes (confirm or change before M1)
+
+| # | Decision | Assumed choice | Alternative |
+|---|---|---|---|
+| D1 | Repo names | `creativeid-studio`, `creativeid-aggregator` (matching the `cultureblocs-*` names) | `CreativeID`, `CreativeIDAggregator` |
+| D2 | Display names | "CreativeID Studio", "CreativeID Aggregator" | "CreativeID Index" for the aggregator |
+| D3 | JSON-LD vocabulary for our own terms | prefix `creativeid:` → `https://www.cultureblocs.com/ns/creativeid#` | `cb:` → `https://www.cultureblocs.com/ns#` |
+| D4 | Local copy | JSON-LD files, one per persona (roadmap open question 3, option A); String sync later | Store records in the String |
+| D5 | Aggregator API nouns | `/v1/personas` replaces `/v1/artists` ("artist" excludes curators, performers and others) | Keep `/v1/artists` as an alias |
+| D6 | Credentials | App passwords are entered for each publish and never written to disk, as now | macOS Keychain later |
+| D7 | Legacy names | No compatibility shims: the prototype is days old. A cleanup script removes any test records already published | Read old names for one release |
+
+Prefix note for D3: don't use `cid:` as the prefix. It would be confused with content IDs (CIDs), which the aggregator already stores.
+
+---
+
+## M0 · Prepare (½ day)
+
+1. Commit or stash the WIP: `public/wizard.js`, `public/wizard.css` and the change to `public/index.html`.
+2. Tag the current state in both repos as `v0.1.0-creative-passport`.
+3. **Find published records.** For every PDS account used in testing, run `com.atproto.repo.listRecords?collection=org.creativepassport.actor.persona`. Note any Solid or static URLs that hold `passport.ttl`/`.jsonld`. This sets the scope of `scripts/cleanup-legacy.ts` in M4.
+4. Create branch `persona-studio` in both repos.
+
+**Exit:** clean trees, tags pushed, a list of legacy records (possibly empty).
+
+---
+
+## M1 · Rename to CreativeID (mechanical: no behaviour change)
+
+Rename only. All existing tests must still pass at the end. Behaviour changes come in M2 onwards, so a reviewer can trust this diff with a quick read.
+
+### Rename map
+
+| Old | New | Where |
+|---|---|---|
+| repo `CreativePassport` | `creativeid-studio` | GitHub (old URLs redirect), `git remote set-url`, local folder `TPM/CreativePassport/CreativePassport` |
+| repo `CreativePassportAggregator` | `creativeid-aggregator` | as above |
+| parent folder `TPM/CreativePassport` | `TPM/CreativeID` | reconnect the folder in the desktop app afterwards |
+| `"name": "creative-passport"` | `"creativeid-studio"` | `package.json`; regenerate `package-lock.json` |
+| `"creative-passport-aggregator"` | `"creativeid-aggregator"` | aggregator `package.json` + lock |
+| keyword `creative-passport` | `creativeid` | both `package.json` |
+| "Creative Passport" (display) | "CreativeID Studio" / "CreativeID" | `public/index.html`, `public/wizard.js`, `src/server.ts`, `src/index.ts` log line, adapter comments, aggregator `public/index.html`, `src/server.ts`, `src/index.ts`, `src/types.ts` header |
+| `createPassportServer` | `createStudioServer` | `src/server.ts`, `src/index.ts`, tests |
+| `CREATIVE_PASSPORT_CONTEXT` | `CREATIVEID_CONTEXT` | `schema.ts`, `transformers.ts` |
+| `cp:` → `https://creativepassport.org/ns#` | `creativeid:` → D3 namespace | studio `schema.ts`, `transformers.ts` (Turtle prefix too); aggregator `types.ts`, `resolver.ts`, tests |
+| `cp:CreativePersona` | `creativeid:Persona` | both repos |
+| `cp:publications` | `creativeid:publications` | `schema.ts`, `store.ts`, tests |
+| `cp:sourceProtocol`, `cp:sourceUri`, `cp:did`, `cp:cid` | `creativeid:sourceProtocol`, … | aggregator `types.ts`, `resolver.ts`, tests |
+| `cp_` id prefix | `pers_` (not `cid_`, see D3 note) | aggregator `resolver.ts#makeArtistId` |
+| `/.well-known/creative-passport.jsonld` | `/.well-known/creativeid.jsonld` | studio static adapter + `wizard.js` copy; aggregator `resolver.ts`, `indexer.ts` seeds, tests |
+| `passport.jsonld` / `passport.ttl` default filenames | `creativeid.jsonld` / `creativeid.ttl` | static & Solid adapters, sandbox paths, UI hints, briefing docs |
+| `localStorage` key `cp.storageGuide.v1` | `creativeid.storageGuide.v1` | `public/wizard.js` |
+| `test/milestone{1,2,3}.test.ts` | keep names; update fixtures | — |
+| Docs | Rewrite name references | `README.md`, `SCOPE.md`, `BRIEFING_ATPROTO_AND_SOLID.md`, `AGGREGATOR_ARCHITECTURE.md`, aggregator `README.md`, `SCOPE.md` |
+
+`org.creativepassport.actor.persona` is **not** renamed here. It is replaced in M4. Renaming it to another custom NSID would create a third persona schema.
+
+### Check
+
+```bash
+grep -rniI --exclude-dir={node_modules,.git,dist} -e 'creative.\?passport' -e '"cp:' -e 'cp\.' .
+```
+The only matches allowed are the `org.creativepassport` NSID strings, which M4 removes.
+
+**Exit:** grep clean (apart from the NSID), `npm test` green in both repos, both UIs load with the new names.
+
+---
+
+## M2 · Canonical model v2: persona graph
+
+Replace the single `Person` (name + bio) with a small JSON-LD graph per persona. Field limits mirror the CultureBlocs lexicons exactly, so anything valid locally can always be published.
+
+### Local document: `data/personas/<personaId>.jsonld`
+
+```json
+{
+  "@context": { "@vocab": "https://schema.org/",
+                "foaf": "http://xmlns.com/foaf/0.1/",
+                "creativeid": "https://www.cultureblocs.com/ns/creativeid#" },
+  "@graph": [
+    { "@id": "#me", "@type": ["Person", "creativeid:Persona"],
+      "name": "…", "description": "…",
+      "knowsAbout": ["sculpture", "sound design"],
+      "homeLocation": { "name": "Peckham, London" },
+      "url": [{ "uri": "https://…", "title": "Website" }],
+      "identifier": [{ "scheme": "orcid", "id": "0000-…" }],
+      "dateCreated": "…", "dateModified": "…" },
+    { "@id": "#work-3l4k2j…", "@type": ["CreativeWork", "creativeid:Work"],
+      "name": "Untitled (Peckham)", "url": "https://…",
+      "creativeid:completionDate": "Spring 2024", "description": "…",
+      "creativeid:credits": [{ "name": "…", "did": "did:plc:…", "role": "lighting design" }],
+      "keywords": ["…"], "identifier": [], "creativeid:links": [] },
+    { "@id": "#claim-3l4k3a…", "@type": "creativeid:Connection",
+      "creativeid:subject": { "did": "did:plc:…" } ,
+      "creativeid:relationship": "performed", "creativeid:role": "…", "creativeid:note": "…" }
+  ],
+  "creativeid:private": { "legalName": "…", "bookingContact": "…" },
+  "creativeid:publications": { "atproto": { "did": "…", "records": { "<localId>": { "uri": "…", "cid": "…", "rkey": "…" } } } }
+}
+```
+
+### Rules
+
+- **Identity of things.** Each work and connection gets a TID (ATProto timestamp ID) as its local id when it is created. The same TID is used as its ATProto `rkey`, so republishing updates the record in place, never duplicates it. The profile always uses `rkey: self`.
+- **Limits, from the lexicons:**
+  - profile: name ≤ 300 graphemes, bio ≤ 2,000, disciplines ≤ 8 × 64, links ≤ 8, externalIds ≤ 20
+  - work: title ≤ 300, completionDate ≤ 100 (free text, not a datetime), description ≤ 2,000, credits ≤ 20, tags ≤ 8 × 64, links ≤ 8, externalIds ≤ 20
+  - connection: relationship ≤ 64 (advisory values from the lexicon, plus `curated`), role ≤ 100, note ≤ 500
+- **Only `name` is required.** The bio stops being required (v1 required it). No checks may block saving. Validation can warn; it only refuses data that cannot be stored or published at all (it breaks a limit).
+- **Private block.** `creativeid:private` holds anything the wizard marks "Only me" or "Shared". Transformers never read it, and a unit test checks this. Tier-4 material belongs here in future.
+- **Publication state** (`creativeid:publications`) is local-only and stripped from every output, as `cp:publications` is today.
+
+### Code
+
+- `src/schema.ts`: types `Persona`, `Work`, `Connection`, `PersonaDocument`; `validate*` functions for each; constructors `createPersona`, `addWork`, `addConnection`, `update*`, `remove*`; a TID generator (in-house, ~20 lines: microsecond timestamp + clock id, base32-sortable).
+- Remove `ValidationIssue.field: "name" | "biography"` and use a path string instead (`works[2].title`).
+
+**Exit:** unit tests cover each limit, the TID's ordering and format, and that the private block never leaks.
+
+---
+
+## M3 · Multi-persona store and API
+
+- `src/store.ts` → `PersonaStore` over the folder `data/personas/`. Methods: `list()`, `load(id)`, `create(input)`, `save(doc)` (keep the atomic temp-file + rename), `delete(id)` (move to `data/personas/.trash/`, never hard-delete), `recordPublication(id, target, localId, status)`.
+- **Migration:** on start, if `data/persona.jsonld` exists and `data/personas/` doesn't, convert it into the first persona. Keep the old file as `persona.v1.jsonld.bak`.
+- `personaId` is a slug of the name plus a short random suffix. It is never derived from a DID, because a persona exists before it is published.
+- **Routes** (replacing `/api/persona`):
+
+| Method | Path |
+|---|---|
+| GET / POST | `/api/personas` |
+| GET / PUT / DELETE | `/api/personas/:id` |
+| POST | `/api/personas/:id/works` · PUT/DELETE `/api/personas/:id/works/:workId` |
+| POST | `/api/personas/:id/connections` · PUT/DELETE `…/connections/:connId` |
+| GET | `/api/personas/:id/preview?format=jsonld\|turtle\|atproto` |
+| GET | `/api/personas/:id/export/download?format=jsonld\|ttl` |
+| POST | `/api/personas/:id/publish/{static,atproto,solid}` |
+
+- The server still binds to `127.0.0.1` only.
+
+**Exit:** API tests cover CRUD for all three record types, the migration from a v1 file, and a delete going to `.trash`. The studio keeps working with the network disabled (test: stub `fetch` to throw; every non-publish route still passes).
+
+---
+
+## M4 · Publish to CultureBlocs lexicons
+
+### ATProto
+
+- **Vendor, don't author.** Add `scripts/vendor-lexicons.ts`, which copies `com/cultureblocs/{defs.json,creative/*.json}` from `../cultureblocs-string/lexicons` (or fetches from cultureblocs.com). Put them in `lexicons/com/cultureblocs/` with a header noting their source. Delete `lexicons/org/creativepassport/`.
+- **Validate before publishing.** Add `@atproto/lexicon` as a dependency and check every outgoing record against the vendored schemas. A failure is a bug in the transformer and fails the test.
+- Transformers (`src/transformers.ts`):
+  - `toProfileRecord(persona)` → `com.cultureblocs.creative.profile`, using `name`, `bio`, `disciplines`, `based` (placeRef `{name}` only), `links`, `externalIds`, `createdAt`
+  - `toWorkRecord(work)` → `com.cultureblocs.creative.work`, using `title`, `referenceUrl`, `completionDate`, `description`, `credits`, `tags`, `links`, `externalIds`, `createdAt` (no `images` yet; blobs are out of scope)
+  - `toConnectionRecord(conn)` → `com.cultureblocs.creative.connection`, where `subject` is a `didRef` or a `strongRef`, plus `relationship`, `role`, `note`, `createdAt`
+  - `createdAt` is set from the local `dateCreated` at first publish and never changes afterwards. That is the lexicon's "only immutable field".
+- `src/adapters/atproto.ts`:
+  - `publishPersona(doc, creds)` runs `putRecord` for the profile, then each work and connection (`rkey` = local TID). It then runs `deleteRecord` for every rkey in `publications.atproto.records` that is no longer present locally (deletes reach the network).
+  - It records `{uri, cid, rkey}` for each item. Use `com.atproto.repo.applyWrites` once there are more than ~10 changes (one commit, atomic).
+  - **One persona = one account.** Store `did` + `pdsUrl` per persona in `publications.atproto`, and refuse to publish persona B into persona A's DID. This protects pseudonymous personas from being linked by accident.
+- **Sandbox:** generalise the `/sandbox/atproto/*` routes to accept any collection, plus add `deleteRecord` and `applyWrites`.
+- `scripts/cleanup-legacy.ts` deletes `org.creativepassport.actor.persona/self` from the accounts found in M0 (dry run by default).
+
+### Static and Solid
+
+- Output: the public graph (the persona document minus `creativeid:private` and `creativeid:publications`), with `#me`, `#work-…` and `#claim-…` fragments.
+- Turtle serializer: extend `toSolidTurtle` to the whole graph. Keep the hand-rolled serializer (no new dependency) but escape everything as now. Add a round-trip test: our parser (copied from the aggregator's `parseTurtlePersona`, extended) reads back what we write.
+- Static default path: `/.well-known/creativeid.jsonld`. Keep the download option.
+
+**Exit:** one persona with three works and two connections publishes to sandbox ATProto, sandbox Solid and static. Deleting a work locally and republishing removes it from the sandbox PDS. All outgoing ATProto records pass lexicon validation.
+
+---
+
+## M5 · Studio UI
+
+- **Persona switcher** at the top: list, "New persona" (name only), rename, move to trash. Empty state: "Make your first persona. It stays on this computer until you choose to publish."
+- **Profile panel:** name, bio, disciplines as free-text chips (placeholder examples from several practices: "sculpture", "stand-up", "curating", "lighting design"), based (text), links, external IDs (scheme dropdown from the lexicon's known values plus "other").
+- **Works panel:** list plus a form (title, URL, completion date as free text, description, credits with optional DID, tags).
+- **Connections panel:** "I … with/at …" form. Relationship dropdown (performed, exhibited, curated, collaborated_on, represented_by, member_of, released, created, references); target by handle/DID or by a pasted `at://` URI (resolve CID on paste where online, else store the URI only).
+- **Inspector:** tabs for public JSON-LD, Turtle, and ATProto (one sub-tab per record type).
+- **Publish hub:** per persona. Show which DID/URL it is bound to and the last publish time for each target. Show a diff count ("2 new, 1 changed, 1 to delete") before publishing.
+- **Storage wizard:** make it work for any practice.
+  - Rename "Name, biography & genres" to "Name, biography & disciplines".
+  - Change "Legal name & rights identifiers (IPI, ISNI, ISRC, PRO)" to "Legal name & registration identifiers", with examples from several fields.
+  - Change "Fees, tech rider & availability" to "Fees, technical needs & availability".
+  - Wire its "Only me" / "Shared" answers to the `creativeid:private` block, so choices made in the wizard actually decide what gets published.
+- **Language:** no "verified", "unverified" or "complete your profile" anywhere.
+
+**Exit:** a manual walkthrough with three test personas (visual artist, performer, curator) can create, edit, publish and delete each record type without touching JSON. Run `design:accessibility-review` on the main screens.
+
+---
+
+## M6 · Aggregator: CreativeID Aggregator
+
+- **Collections:** `ATPROTO_COLLECTIONS = ["com.cultureblocs.creative.profile", "…work", "…connection"]`. Jetstream subscribes with `wantedCollections=com.cultureblocs.creative.*`; check that the Jetstream instance in use accepts NSID prefix wildcards, and otherwise list all three. Handle `create`, `update` and `delete` for each.
+- **Types** (`src/types.ts`):
+  - `IndexedArtist` becomes `IndexedPersona`, gaining `disciplines`, `based`, `links`, `externalIds`.
+  - New `IndexedWork` and `IndexedConnection`, keyed by `at://` URI with their CID stored.
+  - Static/Solid personas come in as one graph, split into the same three types.
+- **Resolver:**
+  - ATProto: `getRecord` for the profile plus `listRecords` for works and connections.
+  - Static/Solid: parse the graph from `/.well-known/creativeid.jsonld` or `.ttl`. Keep the 64 KB limit; raise it only with a reason (a graph with many works may need ~256 KB).
+- **Loops** (`src/loops.ts`, new), computed at read time:
+  - **peer:** A has a `connection` whose `subject.did` = B, and B has one whose `subject.did` = A.
+  - **work attested:** a `connection` from X with a `strongRef` to a `work` in Y's repo.
+  - **CID check:** the strongRef's `cid` equals the work's current CID; if not, set `changedSinceAttested: true`.
+  - Each result comes back as a plain list of loops, e.g. `{ type, from, to, recordUri, attestedAt, changedSinceAttested }`. No score.
+- **API:**
+
+| Method | Path |
+|---|---|
+| GET | `/v1/personas?q=&discipline=&based=&protocol=&limit=&offset=` |
+| GET | `/v1/personas/:id` (DID, handle, domain, WebID or index id) → profile + counts |
+| GET | `/v1/personas/:id/works`, `/v1/personas/:id/connections`, `/v1/personas/:id/loops` |
+| GET | `/v1/works/:atUri` → work + loops |
+| POST | `/v1/index` (unchanged contract) |
+| POST | `/v1/jetstream/event` (any of the three collections) |
+| GET | `/v1/stats` (counts per record type and protocol) |
+
+- **Seed data:** replace the music-only demo profiles with a mixed set (visual artist, performer, curator, collective, lighting designer). Include one peer loop, one venue-attested work, and one changed-since-attested case.
+- **Demo UI:** discipline filter; a persona page with works and connections, showing loops as sentences ("Attested by @venue on 14 Aug 2026"); and a visible "changed since attested" note.
+- **Studio link:** an optional setting in the studio, "Tell these indexes when I publish". It holds a list of URLs, defaulting to empty (off), and sends `POST /v1/index` after each successful publish.
+
+**Exit:** the existing aggregator tests are ported, and new tests cover each loop type plus the CID-mismatch case. In an end-to-end run, the studio publishes to the sandbox, pings the aggregator, and the persona can be found by discipline with its works and loops.
+
+---
+
+## M7 · Docs and ADRs
+
+- `docs/adr/001-creativeid-naming-and-namespace.md`: covers D1–D3 and D7, and why `org.creativepassport.*` was retired.
+- `docs/adr/002-local-persona-store.md`: covers D4, the one-persona-one-account rule, and the private block.
+- Rewrite `README.md` and `SCOPE.md` as v2. Update the briefing and aggregator architecture docs (new collection names, `/.well-known/creativeid.jsonld`, `/v1/personas`).
+- In `cultureblocs-string`: add `curated` to `creative.connection` `knownValues`, link the studio from `ROADMAP.md` §4, and add a short note to `CREATIVE-AND-VENUE.md`.
+
+---
+
+## Out of scope (later roadmap phases)
+
+Images and blobs on works · `did:key` for unpublished personas · keychain credential storage · ATProto OAuth · suggestions rail for reciprocal claims · `<cultureblocs-persona>` embed · merging the aggregator into the CultureBlocs AppView · String sync · tier-4 credentials · CAWG assertions.
+
+## Order and rough size
+
+| Milestone | Depends on | Size |
+|---|---|---|
+| M0 Prepare | — | ½ day |
+| M1 Rename (both repos) | M0 | ½–1 day |
+| M2 Model v2 | M1 | 1–2 days |
+| M3 Store + API | M2 | 1 day |
+| M4 Publish to CultureBlocs lexicons | M3 | 2 days |
+| M5 Studio UI | M3 (can overlap M4) | 2–3 days |
+| M6 Aggregator | M4 (record shapes final) | 2–3 days |
+| M7 Docs + ADRs | alongside each milestone | ½ day |
+
+Each milestone is one PR per repo, keeping tests green. M1 is a pure rename so its diff can be checked quickly.
