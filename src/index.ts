@@ -5,6 +5,7 @@ import { createStudioServer } from "./server.js";
 export * from "./schema.js";
 export * from "./transformers.js";
 export * from "./store.js";
+export * from "./library.js";
 export * from "./adapters/index.js";
 export * from "./server.js";
 export * from "./model/index.js";

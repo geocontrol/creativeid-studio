@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: M0–M2 done · 2026-10-19
+Status: M0–M3 done · 2026-10-19
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -166,7 +166,16 @@ The API and UI never see these key names: every node has a plain *input* shape (
 
 - The server still binds to `127.0.0.1` only.
 
-**Exit:** API tests cover CRUD for all three record types, the migration from a v1 file, and a delete going to `.trash`. The studio keeps working with the network disabled (test: stub `fetch` to throw; every non-publish route still passes).
+**Exit:** API tests cover CRUD for all three record types, the migration from a v1 file, and a delete going to `.trash`. The studio keeps working with the network disabled (test: stub `fetch` to throw; every non-publish route still passes). ✅ `test/m3-library-api.test.ts`, 20 tests.
+
+### As built (done 2026-10-19)
+
+- **`src/library.ts` · `PersonaLibrary`** (new file, not a rewrite of `store.ts`): `list()`, `get(id)`, `require(id)`, `create(input)`, `save(doc)`, `update(id, change)`, `delete(id)`, `recordPublication(id, change)`, `migrateV1(path)`. Writes are atomic and **serialised per persona** (a lock), so two edits at once can't lose each other. Every file read is checked with `validateDocument()`; a damaged file returns **422** and is never overwritten. Ids are checked before touching the disk, so `../` paths can't escape the folder.
+- **Migration** runs once at start-up, before the first request is served. It only imports when the library is empty and renames the old file to `persona.v1.jsonld.bak`.
+- **`src/api.ts`**: the routes above, plus `PUT /api/personas/:id/private` (`{ key, value }`). Errors: 400 with field paths (`profile.links[0].uri`), 404 for unknown personas, works or connections, 413 for oversized bodies, 422 for damaged files. Exports go to `data/exports/<personaId>/`.
+- **The current UI keeps working.** `GET/PUT /api/persona`, `/api/export/download` and `/api/publish/*` still exist and act on the first persona. A save from the old form changes only the name and bio and keeps every other field. These routes go in M5.
+- **Publishing still uses the v1 publishers** (name + bio, `org.creativepassport.actor.persona`) through `src/legacyBridge.ts`, which records results in the v2 publication state. `GET …/preview` already returns `publicGraph` (the v2 graph M4 will publish) beside the v1 outputs. **M4 deletes `legacyBridge.ts`, `schema.ts`, `store.ts` and `transformers.ts`'s v1 functions** (they were due to go in M3, but the v1 publishers still need them).
+- **Deferred to M4:** the one-persona-one-account check. Before a session it isn't possible to know which DID a handle belongs to, so the check belongs in the rewritten ATProto adapter.
 
 ---
 

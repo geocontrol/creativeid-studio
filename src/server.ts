@@ -1,36 +1,24 @@
 /**
- * Local-First HTTP Server & API (`src/server.ts`)
- * Serves the CreativeID browser UI, local persona CRUD API,
- * protocol publishing endpoints, and built-in local ATProto/Solid sandboxes.
+ * Local-First HTTP Server (`src/server.ts`)
+ * Serves the CreativeID Studio UI, the local persona API (./api.ts) and the
+ * built-in ATProto / Solid sandboxes used for zero-config publishing tests.
+ * Binds to 127.0.0.1 only (see index.ts).
  */
 
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, resolve } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  ATPROTO_COLLECTION_NSID,
-  CanonicalPersona,
-  createCanonicalPersona,
-  validatePersonaInput,
-} from "./schema.js";
-import { PersonaStore } from "./store.js";
-import {
-  toAtprotoRecord,
-  toPublicJsonLd,
-  toSolidTurtle,
-} from "./transformers.js";
-import {
-  publishStaticExport,
-  serializeStaticExport,
-  StaticExportFormat,
-} from "./adapters/static.js";
-import { publishToAtproto } from "./adapters/atproto.js";
-import { publishToSolid, SolidDocumentFormat } from "./adapters/solid.js";
+import { ATPROTO_COLLECTION_NSID } from "./schema.js";
+import { PersonaLibrary } from "./library.js";
+import { handleApi } from "./api.js";
 
 export interface ServerOptions {
-  store?: PersonaStore;
+  /** Persona store; defaults to <project>/data/personas. */
+  library?: PersonaLibrary;
+  /** v1 single-persona file to import on first run; defaults to <project>/data/persona.jsonld. */
+  legacyV1Path?: string;
   exportDir?: string;
   publicDir?: string;
   fetchImpl?: typeof fetch;
@@ -65,30 +53,29 @@ function sendJson(res: ServerResponse, status: number, payload: unknown): void {
   res.end(body);
 }
 
-function buildPreviews(persona: CanonicalPersona | null) {
-  const target =
-    persona ??
-    createCanonicalPersona({
-      name: "Your Persona Name",
-      biography: "Write your creative biography or artistic statement here.",
-    });
-
-  return {
-    canonicalJsonLd: persona,
-    publicJsonLd: toPublicJsonLd(target),
-    atprotoRecord: toAtprotoRecord(target),
-    solidTurtle: toSolidTurtle(target),
-  };
-}
-
 export function createStudioServer(options: ServerOptions = {}): Server {
   const __dirname = fileURLToPath(new URL(".", import.meta.url));
   const projectRoot = resolve(__dirname, "..");
-  const store =
-    options.store ?? new PersonaStore(join(projectRoot, "data", "persona.jsonld"));
-  const exportDir = options.exportDir ?? join(projectRoot, "data", "exports");
+  const dataDir = join(projectRoot, "data");
+  const library = options.library ?? new PersonaLibrary(join(dataDir, "personas"));
+  const legacyV1Path = options.legacyV1Path ?? join(dataDir, "persona.jsonld");
+  const exportDir = options.exportDir ?? join(dataDir, "exports");
   const publicDir = options.publicDir ?? join(projectRoot, "public");
   const fetchImpl = options.fetchImpl ?? fetch;
+
+  // Import an old single-persona file once, before the first request is served.
+  const ready = library
+    .migrateV1(legacyV1Path)
+    .then((migrated) => {
+      if (migrated) {
+        console.log(
+          `Imported v1 persona as "${migrated.personaId}" (original kept at ${migrated.backupPath}).`
+        );
+      }
+    })
+    .catch((err) => {
+      console.error(`Could not import v1 persona from ${legacyV1Path}:`, err);
+    });
 
   // Built-in local sandbox stores for zero-config testing of ATProto and Solid publishing
   const sandboxAtprotoRecords = new Map<
@@ -102,6 +89,7 @@ export function createStudioServer(options: ServerOptions = {}): Server {
 
   return createServer(async (req, res) => {
     try {
+      await ready;
       const host = req.headers.host ?? "localhost:3000";
       const url = new URL(req.url ?? "/", `http://${host}`);
       const pathname = url.pathname;
@@ -194,199 +182,10 @@ export function createStudioServer(options: ServerOptions = {}): Server {
       }
 
       // -----------------------------------------------------------------------
-      // 3. CreativeID Local API (/api/*)
+      // 3. CreativeID Local API (/api/*) — see ./api.ts
       // -----------------------------------------------------------------------
-      if (pathname === "/api/persona" && method === "GET") {
-        const persona = await store.load();
-        return sendJson(res, 200, {
-          persona,
-          filePath: store.filePath,
-          previews: buildPreviews(persona),
-        });
-      }
-
-      if (pathname === "/api/persona" && method === "PUT") {
-        const body = await readJsonBody<{
-          name?: string;
-          biography?: string;
-          id?: string;
-        }>(req);
-
-        const validation = validatePersonaInput({
-          name: body.name ?? "",
-          biography: body.biography ?? "",
-          id: body.id,
-        });
-
-        if (!validation.valid) {
-          return sendJson(res, 400, {
-            error: "Validation failed",
-            issues: validation.issues,
-          });
-        }
-
-        const saved = await store.upsert({
-          name: body.name ?? "",
-          biography: body.biography ?? "",
-          id: body.id,
-        });
-
-        return sendJson(res, 200, {
-          persona: saved,
-          filePath: store.filePath,
-          previews: buildPreviews(saved),
-        });
-      }
-
-      if (pathname === "/api/export/download" && method === "GET") {
-        const persona = await store.load();
-        if (!persona) {
-          return sendJson(res, 404, {
-            error: "No local persona exists yet. Save your persona first.",
-          });
-        }
-
-        const format: StaticExportFormat =
-          url.searchParams.get("format") === "turtle" ? "turtle" : "jsonld";
-        const publicUrl = url.searchParams.get("publicUrl") || undefined;
-        const { contentType, content } = serializeStaticExport(
-          persona,
-          format,
-          publicUrl
-        );
-        const filename =
-          format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
-
-        res.writeHead(200, {
-          "Content-Type": `${contentType}; charset=utf-8`,
-          "Content-Disposition": `attachment; filename="${filename}"`,
-        });
-        res.end(content);
+      if (await handleApi({ library, exportDir, fetchImpl }, req, res, url)) {
         return;
-      }
-
-      if (pathname === "/api/publish/static" && method === "POST") {
-        const persona = await store.load();
-        if (!persona) {
-          return sendJson(res, 400, {
-            error: "Save your persona locally before publishing.",
-          });
-        }
-
-        const body = await readJsonBody<{
-          format?: StaticExportFormat;
-          publicUrl?: string;
-          filename?: string;
-        }>(req);
-
-        const format: StaticExportFormat =
-          body.format === "turtle" ? "turtle" : "jsonld";
-        const defaultFilename =
-          format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
-        const safeFilename = (body.filename || defaultFilename).replace(
-          /[^a-zA-Z0-9._-]/g,
-          "_"
-        );
-        const outputPath = join(exportDir, safeFilename);
-
-        const result = await publishStaticExport(persona, {
-          outputPath,
-          format,
-          publicUrl: body.publicUrl,
-        });
-
-        const updatedPersona = await store.recordPublication(
-          "static",
-          result.status
-        );
-
-        return sendJson(res, 200, {
-          result,
-          persona: updatedPersona,
-          previews: buildPreviews(updatedPersona),
-        });
-      }
-
-      if (pathname === "/api/publish/atproto" && method === "POST") {
-        const persona = await store.load();
-        if (!persona) {
-          return sendJson(res, 400, {
-            error: "Save your persona locally before publishing to AT Protocol.",
-          });
-        }
-
-        const body = await readJsonBody<{
-          pdsUrl?: string;
-          identifier?: string;
-          password?: string;
-          accessJwt?: string;
-        }>(req);
-
-        if (!body.pdsUrl || !body.identifier) {
-          return sendJson(res, 400, {
-            error: "Both pdsUrl and identifier (handle or DID) are required.",
-          });
-        }
-
-        const result = await publishToAtproto(persona, {
-          pdsUrl: body.pdsUrl,
-          identifier: body.identifier,
-          password: body.password,
-          accessJwt: body.accessJwt,
-          fetchImpl,
-        });
-
-        const updatedPersona = await store.recordPublication(
-          "atproto",
-          result.status
-        );
-
-        return sendJson(res, 200, {
-          result,
-          persona: updatedPersona,
-          previews: buildPreviews(updatedPersona),
-        });
-      }
-
-      if (pathname === "/api/publish/solid" && method === "POST") {
-        const persona = await store.load();
-        if (!persona) {
-          return sendJson(res, 400, {
-            error: "Save your persona locally before publishing to a Solid Pod.",
-          });
-        }
-
-        const body = await readJsonBody<{
-          resourceUrl?: string;
-          format?: SolidDocumentFormat;
-          authToken?: string;
-          authScheme?: "Bearer" | "DPoP";
-        }>(req);
-
-        if (!body.resourceUrl) {
-          return sendJson(res, 400, {
-            error: "Solid Pod resourceUrl is required.",
-          });
-        }
-
-        const result = await publishToSolid(persona, {
-          resourceUrl: body.resourceUrl,
-          format: body.format,
-          authToken: body.authToken,
-          authScheme: body.authScheme,
-          fetchImpl,
-        });
-
-        const updatedPersona = await store.recordPublication(
-          "solid",
-          result.status
-        );
-
-        return sendJson(res, 200, {
-          result,
-          persona: updatedPersona,
-          previews: buildPreviews(updatedPersona),
-        });
       }
 
       // -----------------------------------------------------------------------
@@ -395,7 +194,7 @@ export function createStudioServer(options: ServerOptions = {}): Server {
       if (method === "GET") {
         const assetPath = pathname === "/" ? "/index.html" : pathname;
         const resolvedAsset = resolve(publicDir, `.${assetPath}`);
-        if (!resolvedAsset.startsWith(publicDir)) {
+        if (resolvedAsset !== publicDir && !resolvedAsset.startsWith(publicDir + sep)) {
           res.writeHead(403);
           res.end("Forbidden");
           return;

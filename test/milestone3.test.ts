@@ -10,7 +10,7 @@ import {
   createStudioServer,
   fetchFromAtproto,
   fetchFromSolid,
-  PersonaStore,
+  PersonaLibrary,
 } from "../src/index.js";
 
 describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing", () => {
@@ -20,10 +20,14 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
 
   before(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), "cp-server-test-"));
-    const store = new PersonaStore(join(tmpDir, "data", "persona.jsonld"));
+    const library = new PersonaLibrary(join(tmpDir, "data", "personas"));
     const exportDir = join(tmpDir, "data", "exports");
 
-    server = createStudioServer({ store, exportDir });
+    server = createStudioServer({
+      library,
+      exportDir,
+      legacyV1Path: join(tmpDir, "data", "persona.jsonld"),
+    });
     await new Promise<void>((resolve) => {
       server.listen(0, "127.0.0.1", () => resolve());
     });
@@ -80,7 +84,8 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
       previews: { atprotoRecord: { name: string }; solidTurtle: string };
     };
     assert.equal(savedData.persona.name, "Laurie Spiegel");
-    assert.equal(savedData.persona["@id"], "#laurie");
+    // v2: the profile is always #me; the public URL decides the published subject.
+    assert.equal(savedData.persona["@id"], "#me");
     assert.equal(savedData.previews.atprotoRecord.name, "Laurie Spiegel");
     assert.match(savedData.previews.solidTurtle, /schema:name "Laurie Spiegel"/);
   });

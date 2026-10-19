@@ -18,7 +18,7 @@ npm start
 Open **http://localhost:3400** in your browser.
 
 ### Features
-1. **Author Locally**: Create and edit your persona name and biography. Stored atomically on local disk at `data/persona.jsonld`.
+1. **Author Locally**: Create one or more personas, each with a profile, works and connections. Each persona is one JSON-LD file in `data/personas/`, written atomically; deleted personas go to `data/personas/.trash/`. An older `data/persona.jsonld` is imported automatically on first start (kept as `persona.v1.jsonld.bak`).
 2. **Live Dataset Inspector**: Inspect your persona in real time as:
    - Canonical Local JSON-LD
    - Public JSON-LD (`schema.org/Person` + `foaf:Person`)
