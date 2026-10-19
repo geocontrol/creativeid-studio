@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Creative Passport — Local-First Persona Studio</title>
+  <meta name="description" content="Author your creative persona locally and publish it to AT Protocol, Solid Pods or static hosting — with a guide to choosing the right data store." />
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/wizard.css" />
 </head>
 <body>
   <header class="topbar">
@@ -24,7 +26,12 @@
     </div>
   </header>
 
-  <main class="workspace-grid">
+  <nav class="app-nav" role="tablist" aria-label="Main views">
+    <button type="button" class="app-nav-btn active" id="nav-studio" data-view="view-studio" role="tab" aria-selected="true">Persona Studio</button>
+    <button type="button" class="app-nav-btn" id="nav-guide" data-view="view-guide" role="tab" aria-selected="false">Storage Guide <span class="nav-new">New</span></button>
+  </nav>
+
+  <main class="workspace-grid app-view" id="view-studio">
     <!-- Left Column: Editor + Visual Card + Live Inspector -->
     <section class="column">
       <div class="panel">
@@ -236,6 +243,43 @@
     </section>
   </main>
 
+  <main class="app-view guide" id="view-guide" hidden>
+    <section class="guide-hero">
+      <h2>Where should your Creative Passport live?</h2>
+      <p>Answer a few questions about <strong>who should see each part of your data</strong> and <strong>what you want it to do</strong>. We'll recommend an AT Protocol PDS, a Solid Pod, static hosting — or a combination.</p>
+      <ol class="stepper" id="wizard-stepper">
+        <li class="active" data-step="0"><span>1</span>Your data</li>
+        <li data-step="1"><span>2</span>Your goals</li>
+        <li data-step="2"><span>3</span>Recommendation</li>
+      </ol>
+    </section>
+
+    <!-- Step 1 -->
+    <section class="panel wizard-step" id="wizard-step-0">
+      <div class="panel-header"><h2>1. Who should see each part of your passport?</h2></div>
+      <p class="panel-intro">Tick the kinds of information you plan to include, then choose who may see it. <strong>AT Protocol PDS and static hosting are public-only</strong> — anything else needs access control.</p>
+      <div class="field-visibility" id="field-visibility"></div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="panel wizard-step" id="wizard-step-1" hidden>
+      <div class="panel-header"><h2>2. What matters to you?</h2></div>
+      <div class="questions" id="wizard-questions"></div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="wizard-step" id="wizard-step-2" hidden>
+      <div id="wizard-result"></div>
+    </section>
+
+    <div class="wizard-actions">
+      <button type="button" class="btn btn-ghost" id="wizard-back" disabled>Back</button>
+      <button type="button" class="btn btn-ghost" id="wizard-reset">Start over</button>
+      <button type="button" class="btn btn-primary" id="wizard-next">Next</button>
+    </div>
+  </main>
+
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/wizard.js"></script>
 </body>
 </html>
