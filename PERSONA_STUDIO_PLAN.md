@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: M0–M6 done · 2026-10-20
+Status: M0–M7 done · 2026-10-20
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -323,6 +323,14 @@ The API and UI never see these key names: every node has a plain *input* shape (
 - `docs/adr/002-local-persona-store.md`: covers D4, the one-persona-one-account rule, and the private block.
 - Rewrite `README.md` and `SCOPE.md` as v2. Update the briefing and aggregator architecture docs (new collection names, `/.well-known/creativeid.jsonld`, `/v1/personas`).
 - In `cultureblocs-string`: add `curated` to `creative.connection` `knownValues`, link the studio from `ROADMAP.md` §4, and add a short note to `CREATIVE-AND-VENUE.md`.
+
+### As built (done 2026-10-20)
+
+- ADR 001 (naming, namespace, schemas) and ADR 002 (local persona store, including D6 and studio settings) in `docs/adr/`.
+- `SCOPE.md` v2: principles, built scope, out of scope, architecture diagram and file roles. `README.md` gains a documentation table and a scripts table.
+- `BRIEFING_ATPROTO_AND_SOLID.md` follows the M5 UI labels and adds the one-persona-per-account note.
+- `AGGREGATOR_ARCHITECTURE.md` moved to the aggregator as `ARCHITECTURE.md` (four ingestion patterns, matches, storage tiers, known gaps); the aggregator's `SCOPE.md` is v2.
+- `cultureblocs-string`: commit `970b41d` on local branch `creativeid-studio` (not pushed: this session can't push to that repo). After it merges, run `publish_lexicons.py` there and `npm run vendor-lexicons` here.
 
 ---
 

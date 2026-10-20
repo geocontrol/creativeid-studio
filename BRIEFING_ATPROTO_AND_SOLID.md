@@ -1,6 +1,8 @@
 # Briefing: AT Protocol PDS & Solid Data Stores for CreativeID
 
-This briefing explains how **AT Protocol Personal Data Servers (PDS)** and **Solid Data Pods** work as publishing targets for **CreativeID**, compares managed providers (**Bluesky**, **Eurosky**, community Solid Pod providers) against **self-hosting**, and provides step-by-step setup instructions.
+This briefing explains how **AT Protocol Personal Data Servers (PDS)** and **Solid Data Pods** work as publishing targets for **CreativeID Studio**, compares managed providers (**Bluesky**, **Eurosky**, community Solid Pod providers) against **self-hosting**, and provides step-by-step setup instructions.
+
+> **Before you start.** Each persona publishes to **its own** AT Protocol account. The studio refuses to publish two personas to one account, so a stage name and a legal name stay unlinked. If you want to keep a persona separate from your everyday Bluesky identity, create a new account for it. To try everything without an account, use **Try it locally** in the studio's Publish section.
 
 ---
 
@@ -35,12 +37,12 @@ When you create a standard Bluesky account (`*.bsky.social`), Bluesky PBC hosts 
 1. Create or log into your account at `https://bsky.app`.
 2. Go to **Settings → Privacy and Security → App Passwords**.
 3. Click **Add App Password**, name it `CreativeID Studio`, and copy the generated `xxxx-xxxx-xxxx-xxxx` password. *(Never use your master account password in third-party tools).*
-4. In CreativeID's **AT Protocol PDS** card:
-   - **PDS Server URL**: `https://bsky.social`
+4. In the studio, open **Publish → AT Protocol**:
+   - **PDS address**: `https://bsky.social`
    - **Handle or DID**: Your handle (e.g., `yourname.bsky.social` or custom domain handle)
-   - **App Password**: Paste the App Password
-5. Click **Publish to ATProto PDS**.
-6. **Verify**: Your record is now live and publicly queryable at:
+   - **App Password**: Paste the App Password (used for this publish only, never saved)
+5. Check the line above the form ("Ready to publish: 3 new"), then click **Publish to AT Protocol**.
+6. **Verify**: Your profile is now live and publicly queryable at the URL below. Works and connections are in the `com.cultureblocs.creative.work` and `.connection` collections:
    ```
    https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=<YOUR_DID_OR_HANDLE>&collection=com.cultureblocs.creative.profile&rkey=self
    ```
@@ -58,8 +60,8 @@ When you create a standard Bluesky account (`*.bsky.social`), Bluesky PBC hosts 
 #### How to Set It Up with CreativeID:
 1. Create an account on Eurosky (or migrate an existing ATProto account to your Eurosky PDS).
 2. Generate an **App Password** from your account settings.
-3. In CreativeID's **AT Protocol PDS** card:
-   - **PDS Server URL**: Enter your Eurosky PDS URL (e.g., `https://eurosky.social` or the specific PDS hostname assigned to your account—you can always inspect your DID document on `https://plc.directory/<your-did>` to see your exact `AtprotoPersonalDataServer` service endpoint).
+3. In the studio, open **Publish → AT Protocol**:
+   - **PDS address**: Enter your Eurosky PDS URL (e.g., `https://eurosky.social` or the specific PDS hostname assigned to your account—you can always inspect your DID document on `https://plc.directory/<your-did>` to see your exact `AtprotoPersonalDataServer` service endpoint).
    - **Handle or DID**: Your Eurosky handle or `did:plc:...`
    - **App Password**: Your App Password.
 
@@ -88,7 +90,7 @@ For complete autonomy, you can run your own single-user or small-community PDS o
    ```bash
    sudo pdsadmin request-crawl bsky.network
    ```
-5. In CreativeID, set **PDS Server URL** to `https://pds.yourdomain.com`.
+5. In the studio's **Publish → AT Protocol**, set **PDS address** to `https://pds.yourdomain.com`.
 
 > [!TIP]
 > **Alternative Lightweight PDS Implementations**: Beyond the official TypeScript/SQLite PDS image (`ghcr.io/bluesky-social/pds`), community implementations like **Cocoon** (Go) and **rsky-pds** (Rust / Blacksky) offer lightweight alternatives for self-hosters.
@@ -115,10 +117,10 @@ You can register a free Solid Pod in minutes from an existing provider Listed on
 #### How to Set Up a Solid Pod for CreativeID:
 1. Register a Pod on e.g. `https://solidweb.me` or `https://solidcommunity.net`.
 2. Your Pod includes a `/public/` container by default, which is world-readable (`acl:Read` for `foaf:Agent`).
-3. To allow CreativeID (or your local CLI) to `PUT` a file into `/public/creativeid.ttl`:
-   - **Authenticated Write (Recommended)**: Obtain a Bearer/OIDC access token for your session and paste it into CreativeID's **Access Token** field, with **Target Solid Resource URL** set to:
+3. To let the studio `PUT` your persona into `/public/creativeid.ttl`:
+   - **Authenticated write (recommended)**: Obtain a Bearer/OIDC access token for your session and paste it into **Publish → Solid Pod → Access token**, with **Resource address** set to:
      `https://<your-pod>/public/creativeid.ttl`
-   - **Development / Local Sandbox**: Click **Use Local Sandbox** in CreativeID to test against the built-in Solid endpoint (`http://localhost:3400/sandbox/solid/public/creativeid.ttl`).
+   - **Trying it locally**: Click **Try it locally** under Solid Pod to publish to the studio's built-in pretend Pod (`http://localhost:3400/sandbox/solid/<persona>/creativeid.ttl`).
 
 ---
 
@@ -135,7 +137,7 @@ Or with Docker:
 ```bash
 docker run -p 4000:3000 -v $(pwd)/solid-data:/data solidproject/community-server:latest -f /data
 ```
-Then visit `http://localhost:4000` to create your local Pod and point CreativeID's Solid adapter to `http://localhost:4000/<your-pod>/public/creativeid.ttl`.
+Then visit `http://localhost:4000` to create your local Pod and point the studio's **Resource address** to `http://localhost:4000/<your-pod>/public/creativeid.ttl`.
 
 #### 2. Production Self-Hosting on a VPS
 1. Provision a Linux VPS and point `solid.yourdomain.com` to its IP.
@@ -165,6 +167,6 @@ flowchart TD
 ```
 
 - **Best "Both Worlds" Setup for Creators**:
-  1. Keep your **canonical source of truth locally** in CreativeID (`data/persona.jsonld`).
-  2. Publish to **Eurosky or Bluesky PDS** (`com.cultureblocs.creative.*`) so ATProto apps and directories can discover and cryptographically verify your persona via your DID.
+  1. Keep your **canonical source of truth locally** in CreativeID Studio (`data/personas/<persona>.jsonld`).
+  2. Publish to **Eurosky or Bluesky PDS** (`com.cultureblocs.creative.*`) so AT Protocol apps and directories can find your persona through your DID, and each record is signed into your repository.
   3. Simultaneously publish to a **Solid Pod** (or static `.jsonld` / `.ttl` on your personal domain) so semantic web / W3C Linked Data consumers can dereference your URI directly over standard HTTP.

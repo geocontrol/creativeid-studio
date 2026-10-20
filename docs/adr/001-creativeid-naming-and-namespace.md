@@ -1,0 +1,40 @@
+# ADR 001: CreativeID naming, namespace and schemas
+
+- **Status:** Accepted, 2026-10-19 (implemented in M1 `d13b1c3` and M4 `b8bd8e4`)
+- **Decides:** plan decisions D1, D2, D3 and D7
+
+## Context
+
+The prototype was called **Creative Passport** and published its own record, `org.creativepassport.actor.persona` (name and bio only). This caused three problems:
+
+1. **The name isn't ours to build on.** "The Creative Passport" is an earlier music-industry project, now continued as Auracles. The prototype's Linked Data namespace, `https://creativepassport.org/ns#`, sits on a domain we don't control.
+2. **There were two persona schemas.** CultureBlocs had already published `com.cultureblocs.creative.profile`, `.work` and `.connection`, with a fuller model (disciplines, place, links, external identifiers). A second persona record in the same account would confuse every reader.
+3. **The scope had grown.** The tool now covers works and connections as well as a profile, for any creative practice, so a music-shaped name and record no longer fit.
+
+## Decision
+
+| | Decision |
+|---|---|
+| Name | **CreativeID** for the idea, which is also the name used in the CultureBlocs roadmap (§4) |
+| Tools | **CreativeID Studio** (local authoring) and **CreativeID Aggregator** (shown as "CreativeID Directory" on its page) |
+| Repositories | `geocontrol/creativeid-studio`, `geocontrol/creativeid-aggregator` (renamed on GitHub; old URLs redirect) |
+| Packages | `creativeid-studio`, `creativeid-aggregator` |
+| AT Protocol records | The existing **`com.cultureblocs.creative.profile` / `.work` / `.connection`**, unchanged and vendored from `cultureblocs-string`. No CreativeID-specific lexicon. |
+| Linked Data terms | Prefix **`creativeid:`** → `https://www.cultureblocs.com/ns/creativeid#`, for terms schema.org lacks (`Persona`, `Work`, `Connection`, `completionDate`, `credits`, `links`, `subject`, `relationship`, `role`, `note`, plus local-only `private`, `publications`, `personaId`, `schemaVersion`) |
+| Well-known file | `/.well-known/creativeid.jsonld` |
+| Index ids | `pers_<protocol>_<hash>` |
+| Legacy | No compatibility shims. `org.creativepassport.actor.persona` records written by this tool are deleted on the next publish to the same account; `npm run cleanup-legacy` covers other accounts. A v1 `data/persona.jsonld` is imported once and kept as a `.bak`. |
+
+## Why
+
+- **One schema, one community.** Publishing to `com.cultureblocs.creative.*` makes a CreativeID persona part of CultureBlocs straight away. Venues' lineups, beads and the directory all read the same records. cultureblocs.com remains the schema authority, so CreativeID never forks it.
+- **The prefix is not `cid:`.** "CID" already means a content identifier in AT Protocol, and the aggregator stores CIDs next to these terms. `creativeid:` avoids any confusion.
+- **The namespace is under cultureblocs.com,** a domain this project controls, so the term IRIs can be published and kept stable.
+- **No shims.** The prototype was two days old. Published records, if any, are cleaned up automatically, so supporting the old names would have been cost with no benefit.
+
+## Consequences
+
+- Readers that only understood `org.creativepassport.actor.persona` (the v1 aggregator) can't see new publishes. The M6 aggregator reads the new records.
+- Any change to the creative lexicons happens in `cultureblocs-string`, followed by `npm run vendor-lexicons` here. The studio's copies are read-only (`lexicons/README.md`).
+- The `creativeid:` term IRIs should be documented at `https://www.cultureblocs.com/ns/creativeid` before anyone outside this project depends on them. That page doesn't exist yet.
+- The name "CreativeID" carries a hint of identity verification. The project deliberately makes no such claim (see the roadmap's identity tiers), and the UI avoids "verified" language.

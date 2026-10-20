@@ -1,6 +1,6 @@
 # CreativeID Studio
 
-> Formerly the **Creative Passport** prototype, renamed to CreativeID on 2026-10-19. See [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md) for where it is heading.
+> Formerly the **Creative Passport** prototype, renamed CreativeID on 2026-10-19. Part of [CultureBlocs](https://www.cultureblocs.com/): it publishes the `com.cultureblocs.creative.*` records.
 
 A **local-first** studio for writing up your creative practice — a profile, the works you've made, and who you've worked with — on your own computer, and publishing it when you choose. Works for any practice: visual art, performance, curating, writing, sound, collectives, technical crafts.
 
@@ -34,7 +34,26 @@ Everything except publishing and Look up works offline.
 
 The UI uses a small JSON API on `localhost` (see `src/api.ts` for the full list): `/api/personas` for personas, works, connections, private fields, previews, downloads and publishing, and `/api/resolve?q=` for look-ups.
 
-## Development & Tests
+## Documentation
+
+| | |
+|---|---|
+| [SCOPE.md](SCOPE.md) | What the studio is, its principles, what's built and what isn't, architecture |
+| [docs/adr/001](docs/adr/001-creativeid-naming-and-namespace.md) | Naming, namespace and schemas |
+| [docs/adr/002](docs/adr/002-local-persona-store.md) | The local persona store, private details, one persona per account |
+| [BRIEFING_ATPROTO_AND_SOLID.md](BRIEFING_ATPROTO_AND_SOLID.md) | Setting up a Bluesky, Eurosky or self-hosted PDS, or a Solid Pod, to publish to |
+| [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md) | How the prototype became the studio, milestone by milestone |
+| [creativeid-aggregator](https://github.com/geocontrol/creativeid-aggregator) | The directory that indexes published personas ([architecture](https://github.com/geocontrol/creativeid-aggregator/blob/main/ARCHITECTURE.md)) |
+
+## Scripts
+
+| | |
+|---|---|
+| `npm run vendor-lexicons` | Copy the CultureBlocs creative lexicons from `cultureblocs-string` into `lexicons/` |
+| `npm run cleanup-legacy -- --pds <url> --identifier <handle>` | Find (and with `--apply`, delete) a v1 `org.creativepassport.actor.persona` record |
+| `npx tsx scripts/aggregator-fixtures.ts <dir>` | Regenerate the aggregator's test fixtures from this code |
+
+## Development
 
 ```bash
 npm test           # unit, API and end-to-end tests
