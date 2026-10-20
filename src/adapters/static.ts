@@ -1,78 +1,51 @@
 /**
- * Static File Export Adapter (`src/adapters/static.ts`)
- * Exports a CanonicalPersona as a standalone JSON-LD or RDF Turtle file
- * suitable for hosting on a personal domain, GitHub Pages, S3, or IPFS.
+ * Static file publisher (`src/adapters/static.ts`) — M4.
+ * Writes the whole public persona graph as JSON-LD or Turtle, for hosting on
+ * a personal domain (ideally at /.well-known/creativeid.jsonld), GitHub
+ * Pages, S3 or IPFS.
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { CanonicalPersona, PublicationStatus } from "../schema.js";
-import { toPublicJsonLd, toSolidTurtle } from "../transformers.js";
 
-export type StaticExportFormat = "jsonld" | "turtle";
+import { PersonaDocument } from "../model/index.js";
+import { baseOf, LinkedDataFormat, serializePersona } from "../rdf.js";
+
+export type StaticExportFormat = LinkedDataFormat;
+
+/** Where a static persona file is best hosted, so the aggregator can find it from a bare domain. */
+export const WELL_KNOWN_PATH = "/.well-known/creativeid.jsonld";
 
 export interface StaticExportOptions {
-  /** Target file path on disk (e.g. ./exports/creativeid.jsonld) */
+  /** File to write. */
   outputPath: string;
-  /** Serialization format: "jsonld" (default) or "turtle" */
   format?: StaticExportFormat;
-  /** Optional public URL where this file will be hosted (used as @id / subject URI) */
+  /** Where the file will be hosted; written as the document base. */
   publicUrl?: string;
-  /** Optional timestamp override */
   now?: Date;
 }
 
 export interface StaticExportResult {
-  status: PublicationStatus;
+  status: { uri: string; publishedAt: string };
   outputPath: string;
   contentType: "application/ld+json" | "text/turtle";
   content: string;
 }
 
-export function serializeStaticExport(
-  persona: CanonicalPersona,
-  format: StaticExportFormat = "jsonld",
-  publicUrl?: string
-): { contentType: "application/ld+json" | "text/turtle"; content: string } {
-  if (format === "turtle") {
-    return {
-      contentType: "text/turtle",
-      content: toSolidTurtle(persona, publicUrl),
-    };
-  }
-
-  const doc = toPublicJsonLd(persona, publicUrl);
-  return {
-    contentType: "application/ld+json",
-    content: JSON.stringify(doc, null, 2) + "\n",
-  };
-}
-
 export async function publishStaticExport(
-  persona: CanonicalPersona,
+  doc: PersonaDocument,
   options: StaticExportOptions
 ): Promise<StaticExportResult> {
   const format = options.format ?? "jsonld";
-  const resolvedPath = resolve(options.outputPath);
-  const { contentType, content } = serializeStaticExport(
-    persona,
-    format,
-    options.publicUrl
-  );
-
-  await mkdir(dirname(resolvedPath), { recursive: true });
-  await writeFile(resolvedPath, content, "utf8");
-
-  const publishedAt = (options.now ?? new Date()).toISOString();
-  const uri = options.publicUrl?.trim() || pathToFileURL(resolvedPath).href;
-
+  const outputPath = resolve(options.outputPath);
+  const { contentType, content } = serializePersona(doc, format, options.publicUrl);
+  await mkdir(dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, content, "utf8");
+  const base = baseOf(options.publicUrl) ?? pathToFileURL(outputPath).href;
   return {
-    status: {
-      uri,
-      publishedAt,
-    },
-    outputPath: resolvedPath,
+    status: { uri: `${base}#me`, publishedAt: (options.now ?? new Date()).toISOString() },
+    outputPath,
     contentType,
     content,
   };

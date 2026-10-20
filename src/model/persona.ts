@@ -471,19 +471,22 @@ export function localIdOf(node: WorkNode | ConnectionNode): string {
   return node["@id"].slice(node["@id"].indexOf("-") + 1);
 }
 
-export function getProfile(doc: PersonaDocument): ProfileNode {
+/** Anything with a persona graph: the stored document or its public view. */
+export type HasGraph = Pick<PersonaDocument, "@graph">;
+
+export function getProfile(doc: HasGraph): ProfileNode {
   const p = doc["@graph"].find(isProfile);
   if (!p) throw new Error("Persona document has no profile node (#me).");
   return p;
 }
 
-export const getWorks = (doc: PersonaDocument): WorkNode[] => doc["@graph"].filter(isWork);
-export const getConnections = (doc: PersonaDocument): ConnectionNode[] =>
+export const getWorks = (doc: HasGraph): WorkNode[] => doc["@graph"].filter(isWork);
+export const getConnections = (doc: HasGraph): ConnectionNode[] =>
   doc["@graph"].filter(isConnection);
 
-export const findWork = (doc: PersonaDocument, id: string): WorkNode | undefined =>
+export const findWork = (doc: HasGraph, id: string): WorkNode | undefined =>
   getWorks(doc).find((w) => localIdOf(w) === id);
-export const findConnection = (doc: PersonaDocument, id: string): ConnectionNode | undefined =>
+export const findConnection = (doc: HasGraph, id: string): ConnectionNode | undefined =>
   getConnections(doc).find((c) => localIdOf(c) === id);
 
 /** Rebuilds the graph in canonical order: profile, works, connections. */

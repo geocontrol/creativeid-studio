@@ -3,7 +3,7 @@
 > Formerly the **Creative Passport** prototype, renamed to CreativeID on 2026-10-19. See [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md) for where it is heading.
 
 A **local-first** studio and dataset publisher for authoring your creative persona (Name & Biography) as canonical Linked Data (`JSON-LD`) and publishing it to:
-- **AT Protocol PDS** (`org.creativepassport.actor.persona` Lexicon record)
+- **AT Protocol PDS** as CultureBlocs records: `com.cultureblocs.creative.profile`, `.work` and `.connection`, validated against the lexicons in [`lexicons/`](lexicons/README.md) before anything is sent
 - **Solid Data Pods** (`text/turtle` or `application/ld+json` via HTTP `PUT`)
 - **Static Dataset Files** (`creativeid.jsonld` / `creativeid.ttl` for personal domains, GitHub Pages, S3, or IPFS)
 
@@ -22,7 +22,7 @@ Open **http://localhost:3400** in your browser.
 2. **Live Dataset Inspector**: Inspect your persona in real time as:
    - Canonical Local JSON-LD
    - Public JSON-LD (`schema.org/Person` + `foaf:Person`)
-   - AT Protocol Lexicon JSON (`org.creativepassport.actor.persona`)
+   - AT Protocol records (`com.cultureblocs.creative.*`)
    - Solid RDF Turtle (`text/turtle`)
 3. **Publish Anywhere**:
    - Use your real **ATProto PDS** handle + App Password or **Solid Pod** resource URL, or click **"Use Local Sandbox"** on either card to test end-to-end publishing locally without external credentials.

@@ -1,0 +1,59 @@
+{
+  "lexicon": 1,
+  "id": "com.cultureblocs.creative.connection",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A directional claim from this repository's holder about another party or record: 'we exhibited this', 'I performed on this', 'this is my work'. One-way and unapproved by default \u2014 the counterparty is never asked to accept anything. When two parties independently point at each other, any reader can compute a verified relationship from the closed loop; this is the mutual-mint primitive at professional scale. Pointing at a record with a CID pins the exact content attested to: if the target is silently rewritten the loop visibly breaks.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "subject",
+          "relationship",
+          "createdAt"
+        ],
+        "properties": {
+          "subject": {
+            "type": "union",
+            "refs": [
+              "com.cultureblocs.defs#didRef",
+              "com.cultureblocs.defs#strongRef"
+            ],
+            "description": "Who or what this claim is about: a party by DID, or a specific record (pin the CID to make the attestation tamper-evident)."
+          },
+          "relationship": {
+            "type": "string",
+            "maxGraphemes": 64,
+            "knownValues": [
+              "created",
+              "collaborated_on",
+              "performed",
+              "exhibited",
+              "released",
+              "represented_by",
+              "attests_to",
+              "references",
+              "member_of"
+            ],
+            "description": "Advisory vocabulary: new relationship types need no schema change."
+          },
+          "role": {
+            "type": "string",
+            "maxGraphemes": 100,
+            "description": "Freeform role within the relationship, e.g. 'mastering engineer', 'lighting design'. Industry role vocabularies are external layers, not core schema."
+          },
+          "note": {
+            "type": "string",
+            "maxGraphemes": 500
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was first stamped. The only immutable field: everything else may be revised by publishing a new commit."
+          }
+        }
+      }
+    }
+  }
+}

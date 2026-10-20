@@ -1,5 +1,5 @@
 /**
- * Local persona API (`src/api.ts`) — M3.
+ * Local persona API (`src/api.ts`).
  *
  *   GET    /api/personas                                   list
  *   POST   /api/personas                                   create (ProfileInput)
@@ -13,8 +13,9 @@
  *   PUT    /api/personas/:id/connections/:connId           replace
  *   DELETE /api/personas/:id/connections/:connId           remove
  *   PUT    /api/personas/:id/private                       { key, value } — never published
- *   GET    /api/personas/:id/preview                       public outputs
+ *   GET    /api/personas/:id/preview                       JSON-LD, Turtle and ATProto records
  *   GET    /api/personas/:id/export/download?format=jsonld|turtle&publicUrl=
+ *   GET    /api/personas/:id/publish/atproto/plan          what an ATProto publish would change
  *   POST   /api/personas/:id/publish/{static,atproto,solid}
  *
  * Legacy single-persona routes for the v1 UI, acting on the first persona
@@ -28,7 +29,6 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 
 import { PersonaFileDamaged, PersonaLibrary, PersonaNotFound } from "./library.js";
-import { toV1Persona, withV1Publication } from "./legacyBridge.js";
 import {
   addConnection,
   addWork,
@@ -42,12 +42,12 @@ import {
   PersonaNotFoundError,
   PersonaValidationError,
   ProfileInput,
+  PublicationsV2,
   removeConnection,
   removeWork,
   setPrivateField,
   toConnectionInput,
   toProfileInput,
-  toPublicDocument,
   toWorkInput,
   updateConnection,
   updateProfile,
@@ -55,9 +55,15 @@ import {
   validateDocument,
   WorkInput,
 } from "./model/index.js";
-import { toAtprotoRecord, toPublicJsonLd, toSolidTurtle } from "./transformers.js";
-import { publishStaticExport, serializeStaticExport, StaticExportFormat } from "./adapters/static.js";
-import { publishToAtproto } from "./adapters/atproto.js";
+import { planPublish, RecordValidationError, toAtprotoRecords } from "./atproto/records.js";
+import { serializePersona, toPublicJsonLd, toTurtle } from "./rdf.js";
+import { publishStaticExport, StaticExportFormat } from "./adapters/static.js";
+import {
+  AccountMismatchError,
+  applyAtprotoResult,
+  publishPersona,
+  PublishFailedError,
+} from "./adapters/atproto.js";
 import { publishToSolid, SolidDocumentFormat } from "./adapters/solid.js";
 
 export interface ApiContext {
@@ -135,52 +141,77 @@ export function personaView(doc: PersonaDocument, library: PersonaLibrary) {
   };
 }
 
-/**
- * Public outputs. `publicGraph` is the v2 persona graph (what M4 will
- * publish); the other three are what the v1 publishers send today.
- */
+/** Everything a persona would publish, in each format. */
 export function previewsFor(doc: PersonaDocument) {
-  const v1 = toV1Persona(doc);
   return {
-    publicGraph: toPublicDocument(doc),
-    publicJsonLd: toPublicJsonLd(v1),
-    atprotoRecord: toAtprotoRecord(v1),
-    solidTurtle: toSolidTurtle(v1),
+    jsonld: toPublicJsonLd(doc),
+    turtle: toTurtle(doc),
+    atproto: toAtprotoRecords(doc).map(({ collection, rkey, record }) => ({ collection, rkey, record })),
+  };
+}
+
+// --- shapes the v1 UI expects (removed in M5) ---------------------------------
+
+function legacyPublications(pubs: PublicationsV2) {
+  const out: Record<string, { uri: string; cid?: string; publishedAt: string }> = {};
+  const me = pubs.atproto?.records?.me;
+  if (me) out.atproto = { uri: me.uri, ...(me.cid ? { cid: me.cid } : {}), publishedAt: me.publishedAt };
+  if (pubs.solid) out.solid = { ...pubs.solid };
+  if (pubs.static) out.static = { ...pubs.static };
+  return out;
+}
+
+function legacyPersona(doc: PersonaDocument) {
+  const p = getProfile(doc);
+  return {
+    "@id": "#me",
+    name: p.name,
+    description: p.description ?? "",
+    dateCreated: p.dateCreated,
+    dateModified: p.dateModified,
+    "creativeid:publications": legacyPublications(doc["creativeid:publications"]),
+  };
+}
+
+function legacyPreviews(doc: PersonaDocument) {
+  const previews = previewsFor(doc);
+  return {
+    publicJsonLd: previews.jsonld,
+    atprotoRecord: previews.atproto.map((r) => r.record),
+    solidTurtle: previews.turtle,
   };
 }
 
 function placeholderPreviews() {
-  const doc = createPersonaDocument(
-    { name: "Your Persona Name", bio: "Write your creative biography or artistic statement here." },
-    { personaId: "preview" }
+  return legacyPreviews(
+    createPersonaDocument(
+      { name: "Your Persona Name", bio: "Write your creative biography or artistic statement here." },
+      { personaId: "preview" }
+    )
   );
-  const { publicGraph: _unused, ...v1Previews } = previewsFor(doc);
-  return v1Previews;
 }
 
 // ---------------------------------------------------------------------------
-// Publishing (v1 publishers via the bridge until M4)
+// Publishing
 // ---------------------------------------------------------------------------
 
 type Target = "static" | "atproto" | "solid";
 
 async function publish(ctx: ApiContext, personaId: string, target: Target, req: IncomingMessage) {
-  const doc = await ctx.library.require(personaId);
-  const v1 = toV1Persona(doc);
+  const { library } = ctx;
+  const doc = await library.require(personaId);
 
   if (target === "static") {
     const body = await readJsonBody<{ format?: StaticExportFormat; publicUrl?: string; filename?: string }>(req);
     const format: StaticExportFormat = body.format === "turtle" ? "turtle" : "jsonld";
     const fallback = format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
     const filename = (body.filename || fallback).replace(/[^a-zA-Z0-9._-]/g, "_");
-    const result = await publishStaticExport(v1, {
+    const result = await publishStaticExport(doc, {
       outputPath: join(ctx.exportDir, personaId, filename),
       format,
       publicUrl: body.publicUrl,
     });
-    const saved = await ctx.library.recordPublication(personaId, (p) =>
-      withV1Publication(p, "static", result.status)
-    );
+    const saved = await library.recordPublication(personaId, (p) => ({ ...p, static: result.status }));
     return { result, doc: saved };
   }
 
@@ -189,17 +220,35 @@ async function publish(ctx: ApiContext, personaId: string, target: Target, req: 
     if (!body.pdsUrl || !body.identifier) {
       throw new HttpError(400, "Both pdsUrl and identifier (handle or DID) are required.");
     }
-    const result = await publishToAtproto(v1, {
-      pdsUrl: body.pdsUrl,
-      identifier: body.identifier,
-      password: body.password,
-      accessJwt: body.accessJwt,
-      fetchImpl: ctx.fetchImpl,
-    });
-    const saved = await ctx.library.recordPublication(personaId, (p) =>
-      withV1Publication(p, "atproto", result.status, { did: result.did, pdsUrl: body.pdsUrl })
-    );
-    return { result, doc: saved };
+    // One account per persona: refuse an account another persona already publishes to.
+    const assertAccount = async (did: string) => {
+      for (const s of await library.list()) {
+        if (s.personaId === personaId) continue;
+        const other = await library.get(s.personaId);
+        if (other?.["creativeid:publications"].atproto?.did === did) {
+          throw new HttpError(409, `That account (${did}) already publishes the persona "${s.name}". Each persona needs its own account.`);
+        }
+      }
+    };
+    try {
+      const result = await publishPersona(doc, {
+        pdsUrl: body.pdsUrl,
+        identifier: body.identifier,
+        password: body.password,
+        accessJwt: body.accessJwt,
+        fetchImpl: ctx.fetchImpl,
+        assertAccount,
+      });
+      const saved = await library.recordPublication(personaId, (p) => applyAtprotoResult(p, result));
+      return { result, doc: saved };
+    } catch (err) {
+      if (err instanceof PublishFailedError) {
+        // Keep whatever did reach the PDS, so local state matches it.
+        await library.recordPublication(personaId, (p) => applyAtprotoResult(p, err.partial));
+        throw new HttpError(502, err.message, { partial: err.partial });
+      }
+      throw err;
+    }
   }
 
   const body = await readJsonBody<{
@@ -209,16 +258,14 @@ async function publish(ctx: ApiContext, personaId: string, target: Target, req: 
     authScheme?: "Bearer" | "DPoP";
   }>(req);
   if (!body.resourceUrl) throw new HttpError(400, "Solid Pod resourceUrl is required.");
-  const result = await publishToSolid(v1, {
+  const result = await publishToSolid(doc, {
     resourceUrl: body.resourceUrl,
     format: body.format,
     authToken: body.authToken,
     authScheme: body.authScheme,
     fetchImpl: ctx.fetchImpl,
   });
-  const saved = await ctx.library.recordPublication(personaId, (p) =>
-    withV1Publication(p, "solid", result.status)
-  );
+  const saved = await library.recordPublication(personaId, (p) => ({ ...p, solid: result.status }));
   return { result, doc: saved };
 }
 
@@ -227,7 +274,7 @@ function sendDownload(res: ServerResponse, doc: PersonaDocument, url: URL) {
     ? "turtle"
     : "jsonld";
   const publicUrl = url.searchParams.get("publicUrl") || undefined;
-  const { contentType, content } = serializeStaticExport(toV1Persona(doc), format, publicUrl);
+  const { contentType, content } = serializePersona(doc, format, publicUrl);
   const filename = format === "turtle" ? "creativeid.ttl" : "creativeid.jsonld";
   res.writeHead(200, {
     "Content-Type": `${contentType}; charset=utf-8`,
@@ -253,6 +300,7 @@ const routes = {
   preview: new RegExp(`^${P}/${ID}/preview$`),
   download: new RegExp(`^${P}/${ID}/export/download$`),
   publish: new RegExp(`^${P}/${ID}/publish/(static|atproto|solid)$`),
+  plan: new RegExp(`^${P}/${ID}/publish/atproto/plan$`),
   legacyPublish: /^\/api\/publish\/(static|atproto|solid)$/,
 };
 
@@ -385,6 +433,21 @@ export async function handleApi(
       sendDownload(res, await library.require(decodeURIComponent(m[1])), url);
       return true;
     }
+    if ((m = path.match(routes.plan)) && method === "GET") {
+      const plan = planPublish(await library.require(decodeURIComponent(m[1])));
+      const brief = (r: { localId: string; collection: string; rkey: string }) => ({
+        localId: r.localId,
+        collection: r.collection,
+        rkey: r.rkey,
+      });
+      sendJson(res, 200, {
+        create: plan.create.map(brief),
+        update: plan.update.map(brief),
+        unchanged: plan.unchanged.map(brief),
+        delete: plan.delete,
+      });
+      return true;
+    }
     if ((m = path.match(routes.publish)) && method === "POST") {
       const id = decodeURIComponent(m[1]);
       const { result, doc } = await publish(ctx, id, m[2] as Target, req);
@@ -402,8 +465,7 @@ export async function handleApi(
         return true;
       }
       const doc = await library.require(id);
-      const { publicGraph: _g, ...previews } = previewsFor(doc);
-      sendJson(res, 200, { persona: toV1Persona(doc), filePath: library.pathFor(id), previews });
+      sendJson(res, 200, { persona: legacyPersona(doc), filePath: library.pathFor(id), previews: legacyPreviews(doc) });
       return true;
     }
     if (path === "/api/persona" && method === "PUT") {
@@ -415,11 +477,10 @@ export async function handleApi(
             updateProfile(d, { ...toProfileInput(getProfile(d)), name: body.name ?? "", bio: body.biography })
           )
         : await library.create({ name: body.name ?? "", bio: body.biography });
-      const { publicGraph: _g, ...previews } = previewsFor(doc);
       sendJson(res, 200, {
-        persona: toV1Persona(doc),
+        persona: legacyPersona(doc),
         filePath: library.pathFor(doc["creativeid:personaId"]),
-        previews,
+        previews: legacyPreviews(doc),
       });
       return true;
     }
@@ -433,8 +494,7 @@ export async function handleApi(
       const id = await first();
       if (!id) throw new HttpError(400, "Save your persona locally before publishing.");
       const { result, doc } = await publish(ctx, id, m[1] as Target, req);
-      const { publicGraph: _g, ...previews } = previewsFor(doc);
-      sendJson(res, 200, { result, persona: toV1Persona(doc), previews });
+      sendJson(res, 200, { result, persona: legacyPersona(doc), previews: legacyPreviews(doc) });
       return true;
     }
 
@@ -442,6 +502,10 @@ export async function handleApi(
   } catch (err) {
     if (err instanceof HttpError) {
       sendJson(res, err.status, { error: err.message, ...err.extra });
+    } else if (err instanceof AccountMismatchError) {
+      sendJson(res, 409, { error: err.message, boundDid: err.boundDid, sessionDid: err.sessionDid });
+    } else if (err instanceof RecordValidationError) {
+      sendJson(res, 400, { error: err.message });
     } else if (err instanceof PersonaValidationError) {
       sendJson(res, 400, { error: "Validation failed", issues: err.issues });
     } else if (err instanceof PersonaNotFound || err instanceof PersonaNotFoundError) {

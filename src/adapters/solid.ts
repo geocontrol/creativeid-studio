@@ -1,132 +1,79 @@
 /**
- * Solid Pod Adapter (`src/adapters/solid.ts`)
- * Publishes and reads a CreativeID persona document on a Solid Pod
- * via HTTP PUT / GET (supporting both `text/turtle` and `application/ld+json`).
+ * Solid Pod publisher (`src/adapters/solid.ts`) — M4.
+ * PUTs the whole public persona graph (Turtle or JSON-LD) to a Solid resource,
+ * and reads resources back.
  */
 
-import { CanonicalPersona, PublicationStatus } from "../schema.js";
-import { toPublicJsonLd, toSolidTurtle } from "../transformers.js";
+import { PersonaDocument } from "../model/index.js";
+import { baseOf, LinkedDataFormat, serializePersona } from "../rdf.js";
 
-export type SolidDocumentFormat = "turtle" | "jsonld";
+export type SolidDocumentFormat = LinkedDataFormat;
 
 export interface SolidPublishOptions {
-  /** Target Solid resource URL (e.g. "https://alice.solidcommunity.net/public/creativeid.ttl") */
+  /** Target resource, e.g. "https://alice.solidcommunity.net/public/creativeid.ttl". */
   resourceUrl: string;
-  /** Serialization format: "turtle" (default for Solid) or "jsonld" */
+  /** Defaults from the URL's extension (.jsonld/.json → JSON-LD, otherwise Turtle). */
   format?: SolidDocumentFormat;
-  /** Optional Bearer / Solid access token if writing to a protected container */
   authToken?: string;
-  /** Optional Authorization header scheme (defaults to "Bearer") */
   authScheme?: "Bearer" | "DPoP";
-  /** Optional custom fetch implementation (e.g. from @inrupt/solid-client-authn-node or tests) */
   fetchImpl?: typeof fetch;
-  /** Optional timestamp override */
   now?: Date;
 }
 
 export interface SolidPublishResult {
-  status: PublicationStatus;
+  status: { uri: string; publishedAt: string };
   resourceUrl: string;
   contentType: "text/turtle" | "application/ld+json";
   content: string;
 }
 
-function validateResourceUrl(url: string): string {
+function checkResourceUrl(url: string): string {
   const trimmed = url.trim();
   if (!/^https?:\/\//i.test(trimmed)) {
-    throw new Error(
-      `Invalid Solid resource URL "${url}": must start with http:// or https://`
-    );
+    throw new Error(`Invalid Solid resource URL "${url}": must start with http:// or https://`);
   }
   return trimmed;
 }
 
-/**
- * Publishes a CanonicalPersona to a Solid Pod resource URL via HTTP PUT.
- */
 export async function publishToSolid(
-  persona: CanonicalPersona,
+  doc: PersonaDocument,
   options: SolidPublishOptions
 ): Promise<SolidPublishResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const resourceUrl = validateResourceUrl(options.resourceUrl);
+  const resourceUrl = baseOf(checkResourceUrl(options.resourceUrl))!;
   const format: SolidDocumentFormat =
-    options.format ??
-    (resourceUrl.endsWith(".jsonld") || resourceUrl.endsWith(".json")
-      ? "jsonld"
-      : "turtle");
+    options.format ?? (/\.(jsonld|json)$/i.test(resourceUrl) ? "jsonld" : "turtle");
+  const { contentType, content } = serializePersona(doc, format, resourceUrl);
 
-  const baseResourceUrl = resourceUrl.split("#")[0];
-  const subjectUri = resourceUrl.includes("#")
-    ? resourceUrl
-    : `${baseResourceUrl}#me`;
-
-  const contentType =
-    format === "turtle" ? "text/turtle" : "application/ld+json";
-  const content =
-    format === "turtle"
-      ? toSolidTurtle(persona, subjectUri)
-      : JSON.stringify(toPublicJsonLd(persona, subjectUri), null, 2) + "\n";
-
-  const headers: Record<string, string> = {
-    "Content-Type": contentType,
-  };
-
+  const headers: Record<string, string> = { "Content-Type": contentType };
   if (options.authToken?.trim()) {
-    const scheme = options.authScheme ?? "Bearer";
-    headers["Authorization"] = `${scheme} ${options.authToken.trim()}`;
+    headers.Authorization = `${options.authScheme ?? "Bearer"} ${options.authToken.trim()}`;
   }
-
-  const response = await fetchImpl(baseResourceUrl, {
-    method: "PUT",
-    headers,
-    body: content,
-  });
-
+  const response = await fetchImpl(resourceUrl, { method: "PUT", headers, body: content });
   if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-    throw new Error(
-      `Solid PUT failed (${response.status} ${response.statusText}): ${bodyText}`
-    );
+    const text = await response.text().catch(() => "");
+    throw new Error(`Solid PUT failed (${response.status} ${response.statusText}): ${text}`);
   }
-
-  const publishedAt = (options.now ?? new Date()).toISOString();
-
   return {
-    status: {
-      uri: subjectUri,
-      publishedAt,
-    },
-    resourceUrl: baseResourceUrl,
+    status: { uri: `${resourceUrl}#me`, publishedAt: (options.now ?? new Date()).toISOString() },
+    resourceUrl,
     contentType,
     content,
   };
 }
 
-/**
- * Reads a published CreativeID resource from a Solid Pod via HTTP GET.
- */
 export async function fetchFromSolid(
   resourceUrl: string,
   fetchImpl: typeof fetch = fetch
 ): Promise<{ contentType: string; content: string }> {
-  const cleanUrl = validateResourceUrl(resourceUrl).split("#")[0];
-
-  const response = await fetchImpl(cleanUrl, {
+  const url = baseOf(checkResourceUrl(resourceUrl))!;
+  const response = await fetchImpl(url, {
     method: "GET",
-    headers: {
-      Accept: "text/turtle, application/ld+json;q=0.9, */*;q=0.1",
-    },
+    headers: { Accept: "text/turtle, application/ld+json;q=0.9, */*;q=0.1" },
   });
-
   if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-    throw new Error(
-      `Solid GET failed (${response.status} ${response.statusText}): ${bodyText}`
-    );
+    const text = await response.text().catch(() => "");
+    throw new Error(`Solid GET failed (${response.status} ${response.statusText}): ${text}`);
   }
-
-  const contentType = response.headers.get("content-type") ?? "text/plain";
-  const content = await response.text();
-  return { contentType, content };
+  return { contentType: response.headers.get("content-type") ?? "text/plain", content: await response.text() };
 }

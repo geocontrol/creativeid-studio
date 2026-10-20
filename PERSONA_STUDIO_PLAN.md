@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: M0–M3 done · 2026-10-19
+Status: M0–M4 done · 2026-10-20
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -203,7 +203,22 @@ The API and UI never see these key names: every node has a plain *input* shape (
 - Turtle serializer: extend `toSolidTurtle` to the whole graph. Keep the hand-rolled serializer (no new dependency) but escape everything as now. Add a round-trip test: our parser (copied from the aggregator's `parseTurtlePersona`, extended) reads back what we write.
 - Static default path: `/.well-known/creativeid.jsonld`. Keep the download option.
 
-**Exit:** one persona with three works and two connections publishes to sandbox ATProto, sandbox Solid and static. Deleting a work locally and republishing removes it from the sandbox PDS. All outgoing ATProto records pass lexicon validation.
+**Exit:** one persona with three works and two connections publishes to sandbox ATProto, sandbox Solid and static. Deleting a work locally and republishing removes it from the sandbox PDS. All outgoing ATProto records pass lexicon validation. 
+✅ `test/m4-publish.test.ts`, 15 tests (65 in total).
+
+### As built (done 2026-10-20)
+
+- **Lexicons:** `scripts/vendor-lexicons.ts` (`npm run vendor-lexicons`) copies `defs`, `creative/profile`, `creative/work` and `creative/connection` from `cultureblocs-string` into `lexicons/`, with a README naming the source commit (`5ddcd13`). `lexicons/org/creativepassport/` is deleted. `@atproto/lexicon` validates every record **before any network call**.
+- **`src/atproto/records.ts`:** `toProfileRecord` / `toWorkRecord` / `toConnectionRecord`, built from `toPublicDocument()` only. Connection subjects carry `$type` `com.cultureblocs.defs#didRef` or `#strongRef`, as `scripts/creative.py` writes them. `createdAt` is the local creation date. `planPublish()` sorts records into create / update / unchanged / delete by comparing modified dates with the last publish. It is exposed as `GET /api/personas/:id/publish/atproto/plan` for the M5 "2 new, 1 changed" summary.
+- **`src/adapters/atproto.ts` · `publishPersona()`:** writes only new and changed records, with `putRecord` at stable rkeys, and deletes records removed locally. Unchanged records aren't rewritten.
+  - **Deviation:** individual `putRecord` / `deleteRecord` calls rather than `applyWrites`. `putRecord` is an upsert, so it survives a PDS whose state has drifted. The cost is that a publish isn't atomic. To compensate, a failure part-way raises `PublishFailedError` carrying what did succeed, the API records that before returning 502, and local state therefore always matches the PDS.
+- **One persona = one account**, enforced both ways: a persona bound to one DID refuses another (`AccountMismatchError`, 409), and the API refuses a DID that another persona already publishes to (409).
+- **v1 cleanup happens automatically** when publishing to the same account: an `org.creativepassport.actor.persona/self` this tool wrote (known from the v1 import or an M3 publish) is deleted. `scripts/cleanup-legacy.ts` (`npm run cleanup-legacy`, dry run unless `--apply`) handles any other account.
+- **`src/rdf.ts`:** the whole graph as JSON-LD (`toPublicJsonLd`) or Turtle (`toTurtle`). The public context types dates as `xsd:dateTime` and links and DIDs as IRIs. Ids stay relative; the public URL becomes `@base`. A test proves the two formats hold identical triples, using `jsonld` canonicalisation and the `n3` parser (dev dependencies only). `foaf:name` is dropped. Static and Solid publications now record `<document>#me`.
+- **Removed:** `schema.ts`, `store.ts`, `transformers.ts`, `legacyBridge.ts`, plus the v1 unit tests (`milestone1/2`). `milestone3.test.ts` stays as an end-to-end test of the old UI routes, which now publish CultureBlocs records.
+- **Sandbox PDS:** adds `deleteRecord` and `listRecords`, gives content-derived CIDs (same record → same CID), and answers 400 `RecordNotFound` like a real PDS.
+- **Knock-on effect:** the aggregator still indexes `org.creativepassport.actor.persona`, so it won't see anything the studio publishes until **M6**.
+- Publishing replaces any `com.cultureblocs.creative.profile/self` already in the account, for example one written with `cultureblocs-string/scripts/creative.py`. That is the intended single profile per account.
 
 ---
 

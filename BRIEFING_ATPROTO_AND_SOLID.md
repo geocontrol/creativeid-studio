@@ -12,7 +12,7 @@ Both protocols decouple **your identity and data** from **single-vendor applicat
 | :--- | :--- | :--- |
 | **Core Metaphor** | **Signed Git Repository of JSON Records** (Merkle Search Tree) | **Personal Web Server of Linked Data Documents** (RDF / REST) |
 | **Identity Anchor** | **DID** (`did:plc:...` or `did:web:...`) + DNS Handle (`@ada.example.com`) | **WebID** (`https://pod.example/profile/card#me`) |
-| **Data Schema** | **Lexicons** (strictly typed JSON schemas identified by reverse-DNS NSIDs like `org.creativepassport.actor.persona`) | **RDF Vocabularies / Ontologies** (`schema.org`, `foaf`, `vcard`, custom namespaces serialized as Turtle or JSON-LD) |
+| **Data Schema** | **Lexicons** (strictly typed JSON schemas identified by reverse-DNS NSIDs like `com.cultureblocs.creative.profile`) | **RDF Vocabularies / Ontologies** (`schema.org`, `foaf`, `vcard`, custom namespaces serialized as Turtle or JSON-LD) |
 | **Access Control** | **Public by default** (repositories are public signed trees broadcast over the relay firehose; private data is evolving) | **Fine-grained Read/Write ACLs** (Web Access Control / ACP per container or file: public, specific WebIDs, or private) |
 | **Strengths for CreativeID** | Instant discoverability across "The Atmosphere" (Bluesky & ATProto apps), cryptographic signing of every record (`cid`), zero-config custom Lexicon writes. | True Linked Data (`JSON-LD` / `Turtle`), granular privacy controls, standard HTTP `PUT`/`GET` semantics. |
 
@@ -24,7 +24,7 @@ Both protocols decouple **your identity and data** from **single-vendor applicat
 In the AT Protocol ("The Atmosphere"), every user account lives inside a **Personal Data Server (PDS)**.
 - Your PDS holds your cryptographic signing key and hosts your personal data repository.
 - Inside your repository, records are organized into **collections** named using reverse-DNS **Lexicon NSIDs**.
-- Even if you signed up through Bluesky, your PDS is **not** limited to microblogging (`app.bsky.*`). Any application—including **CreativeID**—can write custom Lexicon records (such as `org.creativepassport.actor.persona` with record key `self`) into your repository using XRPC (`com.atproto.repo.putRecord`).
+- Even if you signed up through Bluesky, your PDS is **not** limited to microblogging (`app.bsky.*`). Any application—including **CreativeID**—can write custom Lexicon records (such as `com.cultureblocs.creative.profile` with record key `self`) into your repository using XRPC (`com.atproto.repo.putRecord`).
 
 ---
 
@@ -42,7 +42,7 @@ When you create a standard Bluesky account (`*.bsky.social`), Bluesky PBC hosts 
 5. Click **Publish to ATProto PDS**.
 6. **Verify**: Your record is now live and publicly queryable at:
    ```
-   https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=<YOUR_DID_OR_HANDLE>&collection=org.creativepassport.actor.persona&rkey=self
+   https://bsky.social/xrpc/com.atproto.repo.getRecord?repo=<YOUR_DID_OR_HANDLE>&collection=com.cultureblocs.creative.profile&rkey=self
    ```
 
 ---
@@ -166,5 +166,5 @@ flowchart TD
 
 - **Best "Both Worlds" Setup for Creators**:
   1. Keep your **canonical source of truth locally** in CreativeID (`data/persona.jsonld`).
-  2. Publish to **Eurosky or Bluesky PDS** (`org.creativepassport.actor.persona`) so ATProto apps and directories can discover and cryptographically verify your persona via your DID.
+  2. Publish to **Eurosky or Bluesky PDS** (`com.cultureblocs.creative.*`) so ATProto apps and directories can discover and cryptographically verify your persona via your DID.
   3. Simultaneously publish to a **Solid Pod** (or static `.jsonld` / `.ttl` on your personal domain) so semantic web / W3C Linked Data consumers can dereference your URI directly over standard HTTP.

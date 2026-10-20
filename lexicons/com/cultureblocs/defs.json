@@ -1,0 +1,366 @@
+{
+  "lexicon": 1,
+  "id": "com.cultureblocs.defs",
+  "defs": {
+    "workRef": {
+      "type": "object",
+      "description": "DEPRECATED: use #ref with type 'work'. Reference to an artwork/creative work. At least one resolvable ID or a descriptive fallback (title). Readers map it to #ref as { type: work, role: subject, descriptor: { label: title, creator, creatorDid, date }, externalIds: [wikidata, linkedArt, accession] }.",
+      "properties": {
+        "wikidata": {
+          "type": "string",
+          "description": "Wikidata QID, e.g. Q1892745"
+        },
+        "accession": {
+          "type": "ref",
+          "ref": "#accessionRef"
+        },
+        "linkedArt": {
+          "type": "string",
+          "format": "uri",
+          "description": "Linked Art object URI"
+        },
+        "title": {
+          "type": "string",
+          "maxGraphemes": 500
+        },
+        "creator": {
+          "type": "string",
+          "maxGraphemes": 300
+        },
+        "date": {
+          "type": "string",
+          "maxGraphemes": 100,
+          "description": "Freeform creation date, e.g. '1972' or 'c. 1889'"
+        },
+        "image": {
+          "type": "ref",
+          "ref": "#mediaRef"
+        },
+        "creatorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the creative who made this work, when known. The `creator` string remains the descriptive fallback."
+        }
+      }
+    },
+    "accessionRef": {
+      "type": "object",
+      "required": [
+        "institution",
+        "id"
+      ],
+      "properties": {
+        "institution": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the holding institution"
+        },
+        "id": {
+          "type": "string",
+          "maxGraphemes": 200,
+          "description": "Accession/inventory number"
+        }
+      }
+    },
+    "placeRef": {
+      "type": "object",
+      "description": "A venue with an ATProto identity, or an ad-hoc named place.",
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Venue DID if it has an ATProto account"
+        },
+        "name": {
+          "type": "string",
+          "maxGraphemes": 300
+        },
+        "geo": {
+          "type": "ref",
+          "ref": "#geo"
+        }
+      }
+    },
+    "geo": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lng",
+        "precision"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "precision": {
+          "type": "string",
+          "knownValues": [
+            "exact",
+            "100m",
+            "1km",
+            "city"
+          ],
+          "description": "Declared coordinate fuzzing level. Coordinates MUST already be fuzzed to this precision before the record leaves Tier 0."
+        }
+      }
+    },
+    "mediaRef": {
+      "type": "object",
+      "description": "Tier 0/1 media reference. Replaced by an imageRef at promotion time; alt text and aspectRatio carry across unchanged.",
+      "required": [
+        "uri"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "mime": {
+          "type": "string",
+          "maxGraphemes": 100
+        },
+        "alt": {
+          "type": "string",
+          "maxGraphemes": 1000
+        },
+        "aspectRatio": { "type": "ref", "ref": "#aspectRatio" }
+      }
+    },
+    "aspectRatio": {
+      "type": "object",
+      "description": "Pixel dimensions, so a reader can reserve layout space before the image bytes arrive. Shape matches app.bsky.embed.images#aspectRatio.",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "imageRef": {
+      "type": "object",
+      "description": "A published image and the two things a reader needs to present it honestly: what it shows, and how much room it takes. Field names match app.bsky.embed.images#image and the community standalone-image proposal, so this can become a ref to a shared lexicon without changing the published payload.",
+      "required": ["image"],
+      "properties": {
+        "image": { "type": "blob", "accept": ["image/*"], "maxSize": 2000000 },
+        "alt": { "type": "string", "maxGraphemes": 2000, "description": "What the image shows. Absent means absent — readers must not substitute a title." },
+        "aspectRatio": { "type": "ref", "ref": "#aspectRatio" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "app",
+        "mintedAt"
+      ],
+      "properties": {
+        "app": {
+          "type": "string",
+          "maxGraphemes": 100,
+          "description": "Producing app id, e.g. 'culturebloc', 'ar-gallery'"
+        },
+        "device": {
+          "type": "string",
+          "maxGraphemes": 100,
+          "description": "Device identifier, e.g. StickS3 id"
+        },
+        "mintedAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "mutualMint": {
+          "type": "boolean",
+          "description": "True if created by a mutual-press ceremony"
+        },
+        "mintId": {
+          "type": "string",
+          "maxGraphemes": 64,
+          "description": "Device-generated mint identifier (hex). Shared between both parties' beads on a mutual mint \u2014 the encounter join key."
+        },
+        "timeAnchored": {
+          "type": "boolean",
+          "description": "False when the device knew only the time-of-day or nothing; createdAt is then a best guess"
+        }
+      }
+    },
+    "strongRef": {
+      "type": "object",
+      "description": "Local stand-in for com.atproto.repo.strongRef",
+      "required": [
+        "uri"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "cid": {
+          "type": "string"
+        }
+      }
+    },
+    "linkRef": {
+      "type": "object",
+      "description": "External link attached to a bead or strand: event page, venue page, ticket listing.",
+      "required": [
+        "uri"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "title": {
+          "type": "string",
+          "maxGraphemes": 300
+        }
+      }
+    },
+    "externalId": {
+      "type": "object",
+      "description": "An identifier for this subject in another system. Registries are peers: no scheme is privileged, and knownValues is advisory so new schemes need no schema change.",
+      "required": [
+        "scheme",
+        "id"
+      ],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "maxGraphemes": 64,
+          "knownValues": [
+            "isni",
+            "ipi",
+            "ipn",
+            "orcid",
+            "wikidata",
+            "musicbrainz",
+            "auracle",
+            "isrc",
+            "iswc",
+            "isan",
+            "doi",
+            "viaf",
+            "discogs",
+            "rsl",
+            "isbn",
+            "olid",
+            "tmdb",
+            "linkedArt",
+            "accession"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "maxGraphemes": 200
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Resolvable URL for this identifier, where one exists."
+        }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "description": "What an entry is about, or reaches for, as data beside the text. Modelled on app.bsky.richtext.facet: the text is never rewritten, and `index` is a UTF-8 byte range into the record's own text (strand.narrative; bead.note; annotation.note). Identity is descriptor + did + externalIds. No AppView cluster id is ever part of a ref.",
+      "required": ["type", "role", "descriptor"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "maxGraphemes": 32,
+          "knownValues": ["person", "work", "event", "venue", "concept"]
+        },
+        "role": {
+          "type": "string",
+          "maxGraphemes": 32,
+          "knownValues": ["subject", "mention"],
+          "description": "subject: what the record is about. mention: invoked, compared, gestured at. Readers treat any other value as mention."
+        },
+        "descriptor": { "type": "ref", "ref": "#refDescriptor" },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the referent itself (a person, a venue with an account). A work's maker goes in descriptor.creatorDid."
+        },
+        "externalIds": {
+          "type": "array",
+          "maxLength": 20,
+          "items": { "type": "ref", "ref": "#externalId" }
+        },
+        "index": { "type": "ref", "ref": "#byteSlice" }
+      }
+    },
+    "refDescriptor": {
+      "type": "object",
+      "description": "The portable description of a referent: enough to cluster on when no identifier exists. Deliberately has no free-text note.",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string", "maxGraphemes": 500, "description": "Title of a work, name of a person, venue, event or concept." },
+        "creator": { "type": "string", "maxGraphemes": 300 },
+        "creatorDid": { "type": "string", "format": "did" },
+        "date": { "type": "string", "maxGraphemes": 100, "description": "Freeform, e.g. '1972' or 'c. 1889'." }
+      }
+    },
+    "byteSlice": {
+      "type": "object",
+      "description": "Same shape as app.bsky.richtext.facet#byteSlice: zero-indexed UTF-8 byte offsets, end exclusive. Text length limits elsewhere are in graphemes; these are bytes.",
+      "required": ["byteStart", "byteEnd"],
+      "properties": {
+        "byteStart": { "type": "integer", "minimum": 0 },
+        "byteEnd": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "description": "How the work was encountered: the manifestation, as distinct from the work. Two beads can share a work ref and differ here.",
+      "properties": {
+        "format": {
+          "type": "string",
+          "maxGraphemes": 100,
+          "knownValues": ["IMAX 70mm", "70mm", "35mm", "digital", "streaming", "broadcast", "hardback", "paperback", "ebook", "audiobook", "vinyl", "live"]
+        },
+        "venueRef": { "type": "ref", "ref": "#ref", "description": "A reference to a venue, never a location: carries no coordinates." },
+        "eventRef": { "type": "ref", "ref": "#ref", "description": "The screening or performance attended." }
+      }
+    },
+    "didRef": {
+      "type": "object",
+      "description": "A person or organisation by DID, with a descriptive fallback name.",
+      "required": [
+        "did"
+      ],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "name": {
+          "type": "string",
+          "maxGraphemes": 300
+        }
+      }
+    },
+    "creditRef": {
+      "type": "object",
+      "description": "A named contributor. `role` is deliberately freeform: role vocabularies differ per industry and belong in referencing layers, not in this schema.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxGraphemes": 300
+        },
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "role": {
+          "type": "string",
+          "maxGraphemes": 100
+        }
+      }
+    }
+  }
+}

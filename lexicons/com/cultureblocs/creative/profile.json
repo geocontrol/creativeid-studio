@@ -1,0 +1,66 @@
+{
+  "lexicon": 1,
+  "id": "com.cultureblocs.creative.profile",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A creative's self-asserted identity. Self-assertion is the normal state, not a deficient one: the record lives in the creative's own repository, which is the claim. Third-party attestation (com.cultureblocs.creative.connection) is an optional overlay some records acquire. This is a join layer, not a registry: externalIds carry ISNI/IPI/ORCID/Auracle/Wikidata and any future scheme so identifiers held elsewhere keep their value here.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": [
+          "name",
+          "createdAt"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxGraphemes": 300,
+            "description": "The name to be credited under. One profile per persona; a creative may hold several."
+          },
+          "bio": {
+            "type": "string",
+            "maxGraphemes": 2000
+          },
+          "disciplines": {
+            "type": "array",
+            "maxLength": 8,
+            "items": {
+              "type": "string",
+              "maxGraphemes": 64
+            },
+            "description": "Freeform, e.g. 'sculpture', 'sound design', 'dark goth techno'. No controlled vocabulary by design."
+          },
+          "based": {
+            "type": "ref",
+            "ref": "com.cultureblocs.defs#placeRef",
+            "description": "Where the creative is based, at whatever precision they choose to publish."
+          },
+          "links": {
+            "type": "array",
+            "maxLength": 8,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#linkRef"
+            },
+            "description": "Website, portfolio, label page, socials."
+          },
+          "externalIds": {
+            "type": "array",
+            "maxLength": 20,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#externalId"
+            },
+            "description": "Identity in other systems. A bridge service may later register some of these on the creative's behalf; CultureBlocs does not."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was first stamped. The only immutable field: everything else may be revised by publishing a new commit."
+          }
+        }
+      }
+    }
+  }
+}

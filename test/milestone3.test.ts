@@ -8,8 +8,9 @@ import { Server } from "node:http";
 
 import {
   createStudioServer,
-  fetchFromAtproto,
   fetchFromSolid,
+  fetchRecord,
+  NSID,
   PersonaLibrary,
 } from "../src/index.js";
 
@@ -19,7 +20,7 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
   let baseUrl: string;
 
   before(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), "cp-server-test-"));
+    tmpDir = await mkdtemp(join(tmpdir(), "creativeid-server-test-"));
     const library = new PersonaLibrary(join(tmpDir, "data", "personas"));
     const exportDir = join(tmpDir, "data", "exports");
 
@@ -81,12 +82,12 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     assert.equal(goodPut.status, 200);
     const savedData = (await goodPut.json()) as {
       persona: { name: string; "@id": string };
-      previews: { atprotoRecord: { name: string }; solidTurtle: string };
+      previews: { atprotoRecord: { name: string }[]; solidTurtle: string };
     };
     assert.equal(savedData.persona.name, "Laurie Spiegel");
     // v2: the profile is always #me; the public URL decides the published subject.
     assert.equal(savedData.persona["@id"], "#me");
-    assert.equal(savedData.previews.atprotoRecord.name, "Laurie Spiegel");
+    assert.equal(savedData.previews.atprotoRecord[0].name, "Laurie Spiegel");
     assert.match(savedData.previews.solidTurtle, /schema:name "Laurie Spiegel"/);
   });
 
@@ -104,9 +105,10 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     const staticJson = (await staticRes.json()) as {
       result: { status: { uri: string } };
     };
+    // M4: the published subject is always <document>#me.
     assert.equal(
       staticJson.result.status.uri,
-      "https://spiegel.example/creativeid.jsonld#laurie"
+      "https://spiegel.example/creativeid.jsonld#me"
     );
 
     // Verify file download endpoint
@@ -127,18 +129,20 @@ describe("Milestone 3 & 4: Local Web Server, REST API, and End-to-End Publishing
     });
     assert.equal(atprotoRes.status, 200);
     const atprotoJson = (await atprotoRes.json()) as {
-      result: { did: string; status: { uri: string; cid: string } };
+      result: { did: string; records: { me: { uri: string; cid: string } } };
     };
     assert.match(
-      atprotoJson.result.status.uri,
-      /^at:\/\/did:plc:sandboxlauriecreativeidlocal\/org\.creativepassport\.actor\.persona\/self$/
+      atprotoJson.result.records.me.uri,
+      /^at:\/\/did:plc:sandboxlauriecreativeidlocal\/com\.cultureblocs\.creative\.profile\/self$/
     );
 
-    const verifiedAtproto = await fetchFromAtproto(
+    const verifiedAtproto = await fetchRecord(
       `${baseUrl}/sandbox/atproto`,
-      atprotoJson.result.did
+      atprotoJson.result.did,
+      NSID.profile,
+      "self"
     );
-    assert.equal(verifiedAtproto.value.name, "Laurie Spiegel");
+    assert.equal(verifiedAtproto?.value.name, "Laurie Spiegel");
 
     // 3. Solid Pod end-to-end publish & readback
     const solidTarget = `${baseUrl}/sandbox/solid/public/creativeid.ttl`;

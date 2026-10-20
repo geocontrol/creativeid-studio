@@ -10,7 +10,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ATPROTO_COLLECTION_NSID } from "./schema.js";
+import { createHash } from "node:crypto";
 import { PersonaLibrary } from "./library.js";
 import { handleApi } from "./api.js";
 
@@ -125,9 +125,10 @@ export function createStudioServer(options: ServerOptions = {}): Server {
           rkey: string;
           record: unknown;
         }>(req);
-        const key = `${body.repo}/${body.collection || ATPROTO_COLLECTION_NSID}/${body.rkey || "self"}`;
+        const key = `${body.repo}/${body.collection}/${body.rkey || "self"}`;
         const uri = `at://${key}`;
-        const cid = `bafyreisandbox${Date.now().toString(36)}`;
+        // Content-derived, like a real CID: the same record always gets the same value.
+        const cid = `bafyreisandbox${createHash("sha256").update(JSON.stringify(body.record)).digest("hex").slice(0, 32)}`;
         sandboxAtprotoRecords.set(key, { uri, cid, value: body.record });
         return sendJson(res, 200, { uri, cid });
       }
@@ -137,14 +138,34 @@ export function createStudioServer(options: ServerOptions = {}): Server {
         method === "GET"
       ) {
         const repo = url.searchParams.get("repo") ?? "";
-        const collection =
-          url.searchParams.get("collection") ?? ATPROTO_COLLECTION_NSID;
+        const collection = url.searchParams.get("collection") ?? "";
         const rkey = url.searchParams.get("rkey") ?? "self";
         const found = sandboxAtprotoRecords.get(`${repo}/${collection}/${rkey}`);
         if (!found) {
-          return sendJson(res, 404, { error: "RecordNotFound" });
+          // A real PDS answers a missing record with 400 RecordNotFound.
+          return sendJson(res, 400, { error: "RecordNotFound", message: "Could not locate record" });
         }
         return sendJson(res, 200, found);
+      }
+
+      if (
+        pathname === "/sandbox/atproto/xrpc/com.atproto.repo.deleteRecord" &&
+        method === "POST"
+      ) {
+        const body = await readJsonBody<{ repo: string; collection: string; rkey: string }>(req);
+        sandboxAtprotoRecords.delete(`${body.repo}/${body.collection}/${body.rkey}`);
+        return sendJson(res, 200, {});
+      }
+
+      if (
+        pathname === "/sandbox/atproto/xrpc/com.atproto.repo.listRecords" &&
+        method === "GET"
+      ) {
+        const prefix = `${url.searchParams.get("repo") ?? ""}/${url.searchParams.get("collection") ?? ""}/`;
+        const records = [...sandboxAtprotoRecords.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([, r]) => r);
+        return sendJson(res, 200, { records });
       }
 
       // -----------------------------------------------------------------------

@@ -1,0 +1,88 @@
+{
+  "lexicon": 1,
+  "id": "com.cultureblocs.creative.work",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A minimal, self-asserted marker: 'I made this' / 'we made this'. Deliberately tiny. It proves that this claim was made on this date by the holder of this repository \u2014 nothing more, which is exactly the claim that can honestly be made. Everything else (industry metadata, scene layers, commercial registrations, licensing terms) belongs in other namespaces that REFERENCE this record's URI rather than adding fields to it.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "title",
+          "createdAt"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxGraphemes": 300,
+            "description": "Titles can change; history is preserved in repository commits."
+          },
+          "referenceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Where the work currently lives online \u2014 gallery page, Bandcamp, Instagram post, own site. Expected to change over a career."
+          },
+          "completionDate": {
+            "type": "string",
+            "maxGraphemes": 100,
+            "description": "Freeform: '2024', 'Spring 2019', 'ongoing'. Not a datetime: creative chronology is rarely precise."
+          },
+          "description": {
+            "type": "string",
+            "maxGraphemes": 2000
+          },
+          "credits": {
+            "type": "array",
+            "maxLength": 20,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#creditRef"
+            },
+            "description": "Self-asserted collaborators. Asymmetric by design: no approval inbox. If a collaborator publishes a matching claim, readers may compute a verified collaboration from the closed loop."
+          },
+          "externalIds": {
+            "type": "array",
+            "maxLength": 20,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#externalId"
+            },
+            "description": "ISWC, ISRC, DOI, Wikidata and so on, once they exist. Registering them is a separate, often paid, workflow \u2014 this field is the hook a bridge service would write back into."
+          },
+          "links": {
+            "type": "array",
+            "maxLength": 8,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#linkRef"
+            },
+            "description": "Other contexts for the work: press, a Flickr set, the Instagram post, a review."
+          },
+          "tags": {
+            "type": "array",
+            "maxLength": 8,
+            "items": {
+              "type": "string",
+              "maxGraphemes": 64
+            }
+          },
+          "images": {
+            "type": "array",
+            "maxLength": 10,
+            "items": {
+              "type": "ref",
+              "ref": "com.cultureblocs.defs#imageRef"
+            },
+            "description": "The work itself, as published images (small / optionally watermarked). For image-based works this is the work, not metadata. Full-resolution originals need not leave the creator's machine."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this record was first stamped. The only immutable field: everything else may be revised by publishing a new commit."
+          }
+        }
+      }
+    }
+  }
+}

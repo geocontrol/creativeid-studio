@@ -1,5 +1,7 @@
 # CreativeID Aggregator & API Service — Architecture & Cost Analysis
 
+> **Note (2026-10-20):** this describes the v1 prototype. Since M4 the studio publishes the full persona as `com.cultureblocs.creative.{profile,work,connection}` records, and the static file lives at `/.well-known/creativeid.jsonld`; see [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md). This document is rewritten in M7.
+
 ## 1. The Core Architectural Challenge
 When artists self-host or publish their CreativeID to different decentralized stores (**AT Protocol PDS**, **Solid Pods**, or **Static Domains**), a third-party service (e.g., a festival lineup site, music platform, or arts directory) cannot easily:
 1. Know which protocol an artist used.

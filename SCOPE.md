@@ -1,5 +1,7 @@
 # CreativeID Studio — Version 1 Scope & Architecture
 
+> **Note (2026-10-20):** this describes the v1 prototype. Since M4 the studio publishes the full persona as `com.cultureblocs.creative.{profile,work,connection}` records, and the static file lives at `/.well-known/creativeid.jsonld`; see [PERSONA_STUDIO_PLAN.md](PERSONA_STUDIO_PLAN.md). This document is rewritten in M7.
+
 ## 1. Vision & Core Concept
 **CreativeID** is a local-first tool that empowers creators to author, own, and publish their creative persona as a portable, machine-readable dataset. 
 

@@ -7,7 +7,9 @@
     "build": "tsc",
     "test": "node --import tsx --test test/*.test.ts",
     "start": "node --import tsx src/index.ts",
-    "typecheck": "tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "vendor-lexicons": "tsx scripts/vendor-lexicons.ts",
+    "cleanup-legacy": "tsx scripts/cleanup-legacy.ts"
   },
   "keywords": [
     "local-first",
@@ -19,8 +21,14 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@types/n3": "^1.26.4",
     "@types/node": "^22.0.0",
+    "jsonld": "^9.0.0",
+    "n3": "^2.13.12",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@atproto/lexicon": "^0.7.17"
   }
 }

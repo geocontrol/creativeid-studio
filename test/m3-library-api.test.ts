@@ -212,7 +212,7 @@ describe("M3 · persona API (network switched off)", () => {
     assert.deepEqual(p.profile.disciplines, ["poetry", "noise"]);
     assert.deepEqual(p.works, []);
     assert.equal(JSON.stringify(p).includes("@graph"), false);
-    assert.equal(json.previews.publicGraph["@graph"][0].name, "Moor Mother");
+    assert.equal(json.previews.jsonld["@graph"][0].name, "Moor Mother");
   });
 
   it("runs the whole create → edit → delete cycle for works and connections", async () => {
@@ -296,7 +296,7 @@ describe("M3 · persona API (network switched off)", () => {
       publicUrl: "https://moor.example/.well-known/creativeid.jsonld",
     });
     assert.equal(res.status, 200);
-    assert.equal(res.json.persona.publications.static.uri, "https://moor.example/.well-known/creativeid.jsonld");
+    assert.equal(res.json.persona.publications.static.uri, "https://moor.example/.well-known/creativeid.jsonld#me");
     assert.ok(await exists(join(dir, "data", "exports", second, "creativeid.jsonld")), "per-persona export folder");
     const other = await call("GET", `/api/personas/${first}`);
     assert.equal(other.json.persona.publications.static, undefined);
