@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: M0–M5 done · 2026-10-20
+Status: M0–M6 done · 2026-10-20
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -289,6 +289,31 @@ The API and UI never see these key names: every node has a plain *input* shape (
 - **Studio link:** an optional setting in the studio, "Tell these indexes when I publish". It holds a list of URLs, defaulting to empty (off), and sends `POST /v1/index` after each successful publish.
 
 **Exit:** the existing aggregator tests are ported, and new tests cover each loop type plus the CID-mismatch case. In an end-to-end run, the studio publishes to the sandbox, pings the aggregator, and the persona can be found by discipline with its works and loops.
+
+✅ Aggregator: 24 tests. Studio: 73 tests (3 new). End-to-end and browser checks pass.
+
+### As built (done 2026-10-20)
+
+**Aggregator (`creativeid-aggregator`), largely rewritten:**
+- **Three record types**: personas, works and connections (`src/types.ts`), kept as one atomic `data/index.json`. An old v1 index is set aside as `.v1.bak`. Re-indexing a persona replaces everything held for it, so deletions at the source disappear here too.
+- **`src/graph.ts`** reads ATProto records, the studio's JSON-LD (or a v1 single node) and its Turtle (with `n3`) into one shape. A test checks that all three give an identical persona, using fixtures generated from the studio's own code (`creativeid-studio/scripts/aggregator-fixtures.ts`). Published data is untrusted: values are type-checked, capped at lexicon limits, and malformed records are dropped rather than fatal.
+- **`src/resolver.ts`**: ATProto by at:// link, DID or @handle (handle → DID → PDS, with listRecords paginated), static by URL or bare domain (`/.well-known/creativeid.jsonld`), and Solid. Documents are capped at 256 KB and 10 s.
+- **`src/loops.ts`**: peer loops (each names the other, reported once) and work loops (someone points at another person's work). These carry `pinned` and `changedSinceAttested`. Computed on read and cached until the next write.
+- **`src/jetstream.ts`**: a real Jetstream listener (there wasn't one before, only a POST endpoint). It subscribes to the three collections listed explicitly, so no wildcard support is needed, keeps a cursor file, rewinds 5 s on reconnect, and backs off up to 60 s. **Off unless `JETSTREAM=on`.**
+- **API** as planned (`/v1/personas…`, `/v1/works/:uri`), plus `/v1/disciplines`. `/v1/artists` is retired. A public instance refuses to fetch from private networks (checked by host name); a local run allows it, so a studio on the same machine can be indexed.
+- **Demo data** replaced: the v1 seeds used real musicians' names with invented DIDs. They are now five **fictional** personas on `.example` domains (lighting designer, sound collective, venue, choreographer, curator), with one peer loop, one confirmed work and one work changed since it was confirmed.
+- **Directory page**: rebuilt in the studio's visual language. Search by words, discipline, place and protocol; persona pages show works, "Worked with", "Others who name them", and matches as sentences, never badges. Each persona has a linkable address (`#/persona/<id>`).
+
+**Studio:**
+- **"Directories to tell when you publish"** (Publish section; `data/settings.json`, `GET/PUT /api/settings`). It is empty by default. After each successful publish the studio sends `POST /v1/index` to each directory: AT Protocol with DID, PDS and handle; Solid with the resource URL; a static file only if it has a public URL. A directory that's down is reported, and the publish still succeeds. Settings sit beside the personas folder, so tests never notify a real directory.
+- The ATProto publish result now includes the handle the account signed in with.
+
+**Checked end to end** (real studio and aggregator side by side): three personas published to the sandbox PDS and the directory was told automatically. The peer loop and the venue's confirmation of a work appeared. After the work was edited and republished, the confirmation showed as changed. A Solid publish was indexed too. The directory page in Chromium with axe-core (WCAG 2.1 AA): no violations or console errors in light or dark, and no sideways scroll at 390 px.
+
+**Known gaps:**
+- The same persona published to two places (e.g. AT Protocol and Solid) appears as **two entries**, because nothing in the data links them. A future fix could carry the DID in the graph as `sameAs`.
+- The private-network check is by host name only; DNS rebinding isn't covered, so a public instance should also sit behind an egress firewall.
+- Static and Solid personas can make claims, but can't be the far end of a peer loop, because loops match on DIDs.
 
 ---
 

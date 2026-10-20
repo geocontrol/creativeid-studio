@@ -237,6 +237,19 @@
         <section class="section" id="sec-publish" role="tabpanel" aria-labelledby="tab-publish" hidden>
           <p class="lede">Publishing copies the public parts of this persona somewhere others can find them. Your Private details never leave this computer. Publish again any time; it updates what's there.</p>
 
+          <details class="directories">
+            <summary>Directories to tell when you publish <span class="count" id="dir-count"></span></summary>
+            <p class="hint">A directory makes personas searchable by name, discipline and place. Add its address and the studio tells it whenever you publish, from any persona. Nobody is told unless you add one.</p>
+            <form id="dir-form" novalidate>
+              <label for="dir-list">Directory addresses, one per line</label>
+              <textarea id="dir-list" rows="2" placeholder="http://localhost:3500"></textarea>
+              <div class="actions">
+                <button type="submit" class="btn btn-quiet">Save directories</button>
+                <p class="status" id="dir-status" role="status"></p>
+              </div>
+            </form>
+          </details>
+
           <article class="target" aria-labelledby="t-atproto">
             <header>
               <h2 id="t-atproto">AT Protocol (Bluesky and other Atmosphere apps)</h2>

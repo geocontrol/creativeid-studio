@@ -7,16 +7,19 @@
 
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, resolve, sep } from "node:path";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createHash } from "node:crypto";
 import { PersonaLibrary } from "./library.js";
 import { handleApi } from "./api.js";
+import { SettingsStore } from "./settings.js";
 
 export interface ServerOptions {
   /** Persona store; defaults to <project>/data/personas. */
   library?: PersonaLibrary;
+  /** Studio-wide settings; defaults to <project>/data/settings.json. */
+  settings?: SettingsStore;
   /** v1 single-persona file to import on first run; defaults to <project>/data/persona.jsonld. */
   legacyV1Path?: string;
   exportDir?: string;
@@ -58,6 +61,8 @@ export function createStudioServer(options: ServerOptions = {}): Server {
   const projectRoot = resolve(__dirname, "..");
   const dataDir = join(projectRoot, "data");
   const library = options.library ?? new PersonaLibrary(join(dataDir, "personas"));
+  // Settings live beside the personas, so a library elsewhere (e.g. in tests) never reads these.
+  const settings = options.settings ?? new SettingsStore(join(dirname(library.root), "settings.json"));
   const legacyV1Path = options.legacyV1Path ?? join(dataDir, "persona.jsonld");
   const exportDir = options.exportDir ?? join(dataDir, "exports");
   const publicDir = options.publicDir ?? join(projectRoot, "public");
@@ -205,7 +210,7 @@ export function createStudioServer(options: ServerOptions = {}): Server {
       // -----------------------------------------------------------------------
       // 3. CreativeID Local API (/api/*) — see ./api.ts
       // -----------------------------------------------------------------------
-      if (await handleApi({ library, exportDir, fetchImpl }, req, res, url)) {
+      if (await handleApi({ library, exportDir, fetchImpl, settings }, req, res, url)) {
         return;
       }
 

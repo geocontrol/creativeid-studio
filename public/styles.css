@@ -401,6 +401,11 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
 .target-state.live { color: var(--ok); }
 .plan { margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 
+.directories { margin: 0 0 1.5rem; }
+.directories summary { cursor: pointer; font-weight: 600; font-size: 0.9375rem; }
+.directories form { margin-top: 0.75rem; }
+.directories .actions { margin-top: 0.75rem; }
+
 /* ------------------------------------------------------------ the wall label */
 
 .preview { position: sticky; top: 1.5rem; align-self: start; }

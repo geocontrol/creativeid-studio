@@ -5,6 +5,7 @@ import { createStudioServer } from "./server.js";
 export * from "./library.js";
 export * from "./rdf.js";
 export * from "./resolve.js";
+export * from "./settings.js";
 export * from "./atproto/records.js";
 export * from "./atproto/cleanup.js";
 export * from "./adapters/index.js";

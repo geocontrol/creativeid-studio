@@ -24,6 +24,7 @@ Open **http://localhost:3400**.
 - **Profile, Works, Connections.** Plain forms; disciplines and tags in your own words. Connections take a handle, DID or `at://` link — **Look up** finds the DID, or pins a record to its current version (CID).
 - **Private.** Details kept in the persona's file and never published. Suggestions come from your Storage guide answers.
 - **Publish.** AT Protocol (shows what will change before you publish), a downloadable file, or a Solid Pod. **Try it locally** publishes to built-in sandboxes, so you can see the whole flow without an account.
+- **Directories.** Optionally list CreativeID directories (such as [creativeid-aggregator](https://github.com/geocontrol/creativeid-aggregator), at `http://localhost:3500` when run locally) and each publish tells them where to find you. Empty by default; kept in `data/settings.json`.
 - **How it reads.** A live wall-label preview of the persona, and "What gets published" showing the exact AT Protocol records, JSON-LD and Turtle.
 - **Storage guide.** A short questionnaire that recommends where your persona should live.
 

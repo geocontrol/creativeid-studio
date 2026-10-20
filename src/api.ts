@@ -18,6 +18,7 @@
  *   GET    /api/personas/:id/publish/atproto/plan          what an ATProto publish would change
  *   POST   /api/personas/:id/publish/{static,atproto,solid}
  *   GET    /api/resolve?q=<handle | DID | at:// URI>            look up a connection target
+ *   GET    /api/settings · PUT /api/settings                     { indexes: [...] } directories to tell on publish
  *
  * Only the publish and resolve routes touch the network.
  */
@@ -61,11 +62,13 @@ import {
 } from "./adapters/atproto.js";
 import { publishToSolid, SolidDocumentFormat } from "./adapters/solid.js";
 import { ResolveError, resolveTarget } from "./resolve.js";
+import { notifyIndexes, SettingsStore } from "./settings.js";
 
 export interface ApiContext {
   library: PersonaLibrary;
   exportDir: string;
   fetchImpl: typeof fetch;
+  settings: SettingsStore;
 }
 
 class HttpError extends Error {
@@ -222,6 +225,26 @@ async function publish(ctx: ApiContext, personaId: string, target: Target, req: 
   });
   const saved = await library.recordPublication(personaId, (p) => ({ ...p, solid: result.status }));
   return { result, doc: saved };
+}
+
+/**
+ * After a successful publish, tells the directories in settings where to find
+ * the persona. A file saved without a public URL isn't online, so nobody is told.
+ */
+async function tellIndexes(ctx: ApiContext, target: Target, result: unknown) {
+  const { indexes } = await ctx.settings.get();
+  if (!indexes.length) return [];
+  let body: { uri: string; pdsUrl?: string; handle?: string } | undefined;
+  if (target === "atproto") {
+    const r = result as { did: string; pdsUrl: string; handle?: string };
+    body = { uri: `at://${r.did}/com.cultureblocs.creative.profile/self`, pdsUrl: r.pdsUrl, ...(r.handle ? { handle: r.handle } : {}) };
+  } else if (target === "solid") {
+    body = { uri: (result as { resourceUrl: string }).resourceUrl };
+  } else {
+    const uri = (result as { status: { uri: string } }).status.uri.split("#")[0];
+    if (/^https?:/.test(uri)) body = { uri };
+  }
+  return body ? notifyIndexes(indexes, body, ctx.fetchImpl) : [];
 }
 
 function sendDownload(res: ServerResponse, doc: PersonaDocument, url: URL) {
@@ -404,8 +427,25 @@ export async function handleApi(
     }
     if ((m = path.match(routes.publish)) && method === "POST") {
       const id = decodeURIComponent(m[1]);
-      const { result, doc } = await publish(ctx, id, m[2] as Target, req);
-      sendJson(res, 200, { result, persona: view(doc), previews: previewsFor(doc) });
+      const target = m[2] as Target;
+      const { result, doc } = await publish(ctx, id, target, req);
+      const indexes = await tellIndexes(ctx, target, result);
+      sendJson(res, 200, { result, indexes, persona: view(doc), previews: previewsFor(doc) });
+      return true;
+    }
+
+    // --- settings ----------------------------------------------------------
+    if (path === "/api/settings" && method === "GET") {
+      sendJson(res, 200, await ctx.settings.get());
+      return true;
+    }
+    if (path === "/api/settings" && method === "PUT") {
+      const body = await readJsonBody<{ indexes?: string[] }>(req);
+      try {
+        sendJson(res, 200, await ctx.settings.set({ indexes: Array.isArray(body.indexes) ? body.indexes : [] }));
+      } catch (err) {
+        throw new HttpError(400, (err as Error).message);
+      }
       return true;
     }
 

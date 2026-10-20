@@ -37,6 +37,8 @@ export interface AtprotoPublishOptions extends AtprotoCredentials {
 
 export interface AtprotoPublishResult {
   did: string;
+  /** The handle the account signed in with, when known. */
+  handle?: string;
   pdsUrl: string;
   /** Every record now live for this persona, keyed by local id ("me" = profile). */
   records: Record<string, PublishedRecord>;
@@ -226,6 +228,7 @@ export async function publishPersona(
   const publishedAt = (options.now ?? new Date()).toISOString();
   const result: AtprotoPublishResult = {
     did: session.did,
+    ...(session.handle ? { handle: session.handle } : {}),
     pdsUrl,
     records: { ...(doc["creativeid:publications"].atproto?.records ?? {}) },
     created: [],

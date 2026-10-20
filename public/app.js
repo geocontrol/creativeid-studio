@@ -839,7 +839,7 @@ $("atproto-form").addEventListener("submit", async (e) => {
   const status = $("atproto-status");
   setStatus(status, "Publishing…");
   try {
-    const { result, persona } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/atproto`, {
+    const { result, persona, indexes } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/atproto`, {
       pdsUrl: $("a-pds").value.trim(),
       identifier: $("a-handle").value.trim(),
       password: $("a-password").value,
@@ -851,7 +851,7 @@ $("atproto-form").addEventListener("submit", async (e) => {
       result.deleted.length && `${result.deleted.length} removed`,
     ].filter(Boolean);
     await applyPersona(persona);
-    setStatus(status, parts.length ? `Published: ${parts.join(", ")}.` : "Published. Nothing had changed.", "ok");
+    setStatus(status, (parts.length ? `Published: ${parts.join(", ")}.` : "Published. Nothing had changed.") + directoryNote(indexes), indexes?.some((n) => !n.ok) ? "warn" : "ok");
     refreshPlan();
   } catch (err) {
     setStatus(status, describeIssues(err), "err");
@@ -869,12 +869,12 @@ $("static-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
     const format = $("s-format").value;
-    const { result, persona } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/static`, {
+    const { result, persona, indexes } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/static`, {
       format,
       publicUrl: $("s-url").value.trim() || undefined,
     });
     await applyPersona(persona);
-    setStatus($("static-status"), `Saved to ${result.outputPath.split(/[\\/]/).slice(-4).join("/")}`, "ok");
+    setStatus($("static-status"), `Saved to ${result.outputPath.split(/[\\/]/).slice(-4).join("/")}.` + directoryNote(indexes), "ok");
   } catch (err) {
     setStatus($("static-status"), describeIssues(err), "err");
   }
@@ -889,17 +889,51 @@ $("solid-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   setStatus($("solid-status"), "Publishing…");
   try {
-    const { result, persona } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/solid`, {
+    const { result, persona, indexes } = await api("POST", `/api/personas/${encodeURIComponent(state.id)}/publish/solid`, {
       resourceUrl: $("o-url").value.trim(),
       format: $("o-format").value,
       authToken: $("o-token").value || undefined,
     });
     await applyPersona(persona);
-    setStatus($("solid-status"), `Published to ${result.resourceUrl}`, "ok");
+    setStatus($("solid-status"), `Published to ${result.resourceUrl}.` + directoryNote(indexes), indexes?.some((n) => !n.ok) ? "warn" : "ok");
   } catch (err) {
     setStatus($("solid-status"), describeIssues(err), "err");
   }
 });
+
+// --- directories ------------------------------------------------------------
+
+let directories = [];
+
+async function loadDirectories() {
+  directories = (await api("GET", "/api/settings")).indexes;
+  $("dir-list").value = directories.join("\n");
+  $("dir-count").textContent = directories.length ? `(${directories.length})` : "";
+}
+
+$("dir-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const indexes = $("dir-list").value.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+    directories = (await api("PUT", "/api/settings", { indexes })).indexes;
+    $("dir-list").value = directories.join("\n");
+    $("dir-count").textContent = directories.length ? `(${directories.length})` : "";
+    setStatus($("dir-status"), directories.length ? "Saved" : "Saved. No directories will be told.", "ok");
+  } catch (err) {
+    setStatus($("dir-status"), describeIssues(err), "err");
+  }
+});
+
+/** One sentence about which directories heard about a publish. */
+function directoryNote(notices) {
+  if (!notices?.length) return "";
+  const ok = notices.filter((n) => n.ok).length;
+  const failed = notices.filter((n) => !n.ok);
+  const parts = [];
+  if (ok) parts.push(`Told ${ok} ${ok === 1 ? "directory" : "directories"}.`);
+  for (const f of failed) parts.push(`Couldn't tell ${f.index}: ${f.error}`);
+  return " " + parts.join(" ");
+}
 
 // --- wall label -------------------------------------------------------------
 
@@ -975,6 +1009,7 @@ $("copy-btn").addEventListener("click", async () => {
 
 // ------------------------------------------------------------------ start
 
+loadDirectories().catch(() => undefined);
 loadPersonas().catch((err) => {
   $("local-status").textContent = `Couldn't open your personas: ${err.message}`;
 });
