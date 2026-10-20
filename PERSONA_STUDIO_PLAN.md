@@ -1,6 +1,6 @@
 # Plan: CreativePassport → CreativeID Persona Studio
 
-Status: M0–M4 done · 2026-10-20
+Status: M0–M5 done · 2026-10-20
 Covers both repos: `CreativePassport` (→ studio) and `CreativePassportAggregator` (→ aggregator).
 Context: roadmap phases 1–3 in the doc *Creative Persona × CultureBlocs — Roadmap Vision*.
 
@@ -237,7 +237,23 @@ The API and UI never see these key names: every node has a plain *input* shape (
   - Wire its "Only me" / "Shared" answers to the `creativeid:private` block, so choices made in the wizard actually decide what gets published.
 - **Language:** no "verified", "unverified" or "complete your profile" anywhere.
 
-**Exit:** a manual walkthrough with three test personas (visual artist, performer, curator) can create, edit, publish and delete each record type without touching JSON. Run `design:accessibility-review` on the main screens.
+**Exit:** a manual walkthrough with three test personas (visual artist, performer, curator) can create, edit, publish and delete each record type without touching JSON. Run an accessibility review on the main screens.
+
+✅ 70 tests in total; accessibility check clean.
+
+### As built (done 2026-10-20)
+
+- **Design:** the persona preview is drawn as a gallery wall label (square-cut mounted card, bold name, *italic* work titles as in catalogues). It's the one bold element; the editor around it is quiet forms on a cool gallery-wall background, with one action colour (ultramarine). Helvetica Neue / system fonts only, so the studio stays offline. Light and dark themes. Section tabs are peers (Profile, Works, Connections, Private, Publish), so they aren't numbered.
+- **Personas:** a switcher in the masthead, "New persona" (name only), and move to trash with an inline confirm. The first run opens with "Make your first persona. It stays on this computer until you choose to publish."
+- **Profile:** name and bio (counters appear near the limit), disciplines and tags as free-text chips, based-in, repeatable links and identifier rows (scheme list from the lexicon; any scheme already stored is kept).
+- **Works:** list plus inline form. New works start with you in the credits; the wall label hides self-credits.
+- **Connections:** "I … with/at …" phrasing, relationship list plus your own word, and a target box taking a handle, DID or `at://` link. **Look up** (`GET /api/resolve`, new `src/resolve.ts`) turns a handle into a DID (the handle's own `/.well-known/atproto-did`, then the public API), reads a DID's handle and PDS (plc.directory or did:web), and pins an `at://` link to its current CID. Saving a handle looks it up automatically. Unpinned record links show a gentle note.
+- **Private:** key/value list stored in `creativeid:private`. Suggested keys come from whatever the Storage guide marked "Only me" or "Shared". This is how the wizard's answers now decide what stays out of publishing.
+- **Publish:** per target, with the bound account and last publish date, the plan summary ("Ready to publish: 2 new, 1 changed, 1 to remove."), "Try it locally" for each sandbox, and an outcome line. App Passwords are cleared after each publish.
+- **Storage guide:** wording made practice-neutral (no genres, PRO or tech rider); its gradient nav removed; unticked rows use muted text instead of 55% opacity (contrast).
+- **Removed:** the single-persona `/api/persona`, `/api/export/download` and `/api/publish/*` routes, and `milestone3.test.ts`, which tested them.
+- **Checked in a real browser** (Playwright + axe-core, WCAG 2.1 AA plus best practice) across first run, connections, publish, works and the storage guide, in light and dark: **no violations, no console errors, no horizontal scroll at 390 px.** Fixes from that pass: a real `<h1>`, darker "published" green, a switcher that wraps on phones, and a favicon.
+- **Tests:** `test/m5-ui-api.test.ts` covers look-ups (handle, public API fallback, did:plc, did:web, CID pinning and each failure message), that the retired routes are gone, Solid and static publishing through the API, and that every element `app.js` uses exists in the page.
 
 ---
 

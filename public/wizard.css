@@ -11,50 +11,7 @@
 
 .app-view[hidden] { display: none !important; }
 
-/* ---------- top-level nav ---------- */
-.app-nav {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0 2rem;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-.app-nav-btn {
-  position: relative;
-  background: none;
-  border: 0;
-  color: var(--muted);
-  font: inherit;
-  font-weight: 600;
-  padding: 0.85rem 1.1rem;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.app-nav-btn::after {
-  content: "";
-  position: absolute;
-  inset: auto 0.8rem 0 0.8rem;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: linear-gradient(90deg, var(--pds), var(--solid), var(--static));
-  transform: scaleX(0);
-  transition: transform 0.25s ease;
-}
-.app-nav-btn:hover { color: var(--text); }
-.app-nav-btn.active { color: var(--text); }
-.app-nav-btn.active::after { transform: scaleX(1); }
-.app-nav-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 6px; }
-.nav-new {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.1rem 0.4rem;
-  margin-left: 0.35rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--solid), var(--pds));
-  color: #fff;
-  vertical-align: middle;
-}
+/* top-level nav styles live in styles.css */
 
 /* ---------- guide layout ---------- */
 .guide {
@@ -135,7 +92,7 @@
   transition: opacity 0.2s, border-color 0.2s;
 }
 .fv-row:hover { border-color: #3d4f6e; }
-.fv-row.is-off { opacity: 0.55; }
+.fv-row.is-off strong, .fv-row.is-off small { color: var(--muted); font-weight: 400; }
 .fv-include { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; }
 .fv-include input { margin-top: 0.3rem; accent-color: var(--primary); width: 1.05rem; height: 1.05rem; }
 .fv-include small { display: block; color: var(--muted); font-size: 0.82rem; }

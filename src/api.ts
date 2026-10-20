@@ -17,12 +17,9 @@
  *   GET    /api/personas/:id/export/download?format=jsonld|turtle&publicUrl=
  *   GET    /api/personas/:id/publish/atproto/plan          what an ATProto publish would change
  *   POST   /api/personas/:id/publish/{static,atproto,solid}
+ *   GET    /api/resolve?q=<handle | DID | at:// URI>            look up a connection target
  *
- * Legacy single-persona routes for the v1 UI, acting on the first persona
- * (removed in M5): GET/PUT /api/persona, GET /api/export/download,
- * POST /api/publish/{static,atproto,solid}.
- *
- * Only the publish routes touch the network.
+ * Only the publish and resolve routes touch the network.
  */
 
 import { IncomingMessage, ServerResponse } from "node:http";
@@ -33,7 +30,6 @@ import {
   addConnection,
   addWork,
   ConnectionInput,
-  createPersonaDocument,
   getConnections,
   getProfile,
   getWorks,
@@ -42,7 +38,6 @@ import {
   PersonaNotFoundError,
   PersonaValidationError,
   ProfileInput,
-  PublicationsV2,
   removeConnection,
   removeWork,
   setPrivateField,
@@ -65,6 +60,7 @@ import {
   PublishFailedError,
 } from "./adapters/atproto.js";
 import { publishToSolid, SolidDocumentFormat } from "./adapters/solid.js";
+import { ResolveError, resolveTarget } from "./resolve.js";
 
 export interface ApiContext {
   library: PersonaLibrary;
@@ -148,47 +144,6 @@ export function previewsFor(doc: PersonaDocument) {
     turtle: toTurtle(doc),
     atproto: toAtprotoRecords(doc).map(({ collection, rkey, record }) => ({ collection, rkey, record })),
   };
-}
-
-// --- shapes the v1 UI expects (removed in M5) ---------------------------------
-
-function legacyPublications(pubs: PublicationsV2) {
-  const out: Record<string, { uri: string; cid?: string; publishedAt: string }> = {};
-  const me = pubs.atproto?.records?.me;
-  if (me) out.atproto = { uri: me.uri, ...(me.cid ? { cid: me.cid } : {}), publishedAt: me.publishedAt };
-  if (pubs.solid) out.solid = { ...pubs.solid };
-  if (pubs.static) out.static = { ...pubs.static };
-  return out;
-}
-
-function legacyPersona(doc: PersonaDocument) {
-  const p = getProfile(doc);
-  return {
-    "@id": "#me",
-    name: p.name,
-    description: p.description ?? "",
-    dateCreated: p.dateCreated,
-    dateModified: p.dateModified,
-    "creativeid:publications": legacyPublications(doc["creativeid:publications"]),
-  };
-}
-
-function legacyPreviews(doc: PersonaDocument) {
-  const previews = previewsFor(doc);
-  return {
-    publicJsonLd: previews.jsonld,
-    atprotoRecord: previews.atproto.map((r) => r.record),
-    solidTurtle: previews.turtle,
-  };
-}
-
-function placeholderPreviews() {
-  return legacyPreviews(
-    createPersonaDocument(
-      { name: "Your Persona Name", bio: "Write your creative biography or artistic statement here." },
-      { personaId: "preview" }
-    )
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +256,6 @@ const routes = {
   download: new RegExp(`^${P}/${ID}/export/download$`),
   publish: new RegExp(`^${P}/${ID}/publish/(static|atproto|solid)$`),
   plan: new RegExp(`^${P}/${ID}/publish/atproto/plan$`),
-  legacyPublish: /^\/api\/publish\/(static|atproto|solid)$/,
 };
 
 /**
@@ -455,46 +409,16 @@ export async function handleApi(
       return true;
     }
 
-    // --- legacy single-persona routes (v1 UI; removed in M5) ---------------
-    const first = async () => (await library.list())[0]?.personaId;
-
-    if (path === "/api/persona" && method === "GET") {
-      const id = await first();
-      if (!id) {
-        sendJson(res, 200, { persona: null, filePath: library.root, previews: placeholderPreviews() });
-        return true;
+    // --- lookup ------------------------------------------------------------
+    if (path === "/api/resolve" && method === "GET") {
+      const q = url.searchParams.get("q")?.trim();
+      if (!q) throw new HttpError(400, "Add a handle, DID or at:// link to look up.");
+      try {
+        sendJson(res, 200, await resolveTarget(q, { fetchImpl: ctx.fetchImpl }));
+      } catch (err) {
+        if (err instanceof ResolveError) throw new HttpError(404, err.message);
+        throw new HttpError(502, `Couldn't reach the network to look that up: ${(err as Error).message}`);
       }
-      const doc = await library.require(id);
-      sendJson(res, 200, { persona: legacyPersona(doc), filePath: library.pathFor(id), previews: legacyPreviews(doc) });
-      return true;
-    }
-    if (path === "/api/persona" && method === "PUT") {
-      const body = await readJsonBody<{ name?: string; biography?: string }>(req);
-      const id = await first();
-      const doc = id
-        ? await library.update(id, (d) =>
-            // Keep everything the old UI can't see (disciplines, links…); change name and bio only.
-            updateProfile(d, { ...toProfileInput(getProfile(d)), name: body.name ?? "", bio: body.biography })
-          )
-        : await library.create({ name: body.name ?? "", bio: body.biography });
-      sendJson(res, 200, {
-        persona: legacyPersona(doc),
-        filePath: library.pathFor(doc["creativeid:personaId"]),
-        previews: legacyPreviews(doc),
-      });
-      return true;
-    }
-    if (path === "/api/export/download" && method === "GET") {
-      const id = await first();
-      if (!id) throw new HttpError(404, "No local persona exists yet. Save your persona first.");
-      sendDownload(res, await library.require(id), url);
-      return true;
-    }
-    if ((m = path.match(routes.legacyPublish)) && method === "POST") {
-      const id = await first();
-      if (!id) throw new HttpError(400, "Save your persona locally before publishing.");
-      const { result, doc } = await publish(ctx, id, m[1] as Target, req);
-      sendJson(res, 200, { result, persona: legacyPersona(doc), previews: legacyPreviews(doc) });
       return true;
     }
 

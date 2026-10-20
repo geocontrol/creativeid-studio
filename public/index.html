@@ -3,271 +3,373 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CreativeID Studio — Local-First Persona Studio</title>
-  <meta name="description" content="Author your creative persona locally and publish it to AT Protocol, Solid Pods or static hosting — with a guide to choosing the right data store." />
+  <title>CreativeID Studio</title>
+  <meta name="description" content="Write up your creative practice on your own computer, then publish it when you choose: to AT Protocol, a Solid Pod or your own website." />
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/wizard.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="topbar-brand">
-      <span class="persona-emblem">ID</span>
-      <div>
-        <h1>CreativeID Studio <span class="version-pill">v1.0</span></h1>
-        <p class="subtitle">Local-first creative persona authoring &amp; decentralized dataset publisher</p>
-      </div>
+  <a class="skip-link" href="#main">Skip to the editor</a>
+
+  <header class="masthead">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">ID</span>
+      <h1 class="brand-name">CreativeID Studio</h1>
     </div>
-    <div class="storage-indicator">
-      <span class="dot" id="storage-dot"></span>
-      <div>
-        <div class="storage-label" id="storage-status-text">Checking local store...</div>
-        <code class="storage-path" id="storage-file-path">data/persona.jsonld</code>
-      </div>
+
+    <div class="switcher" id="switcher" hidden>
+      <label for="persona-select">Persona</label>
+      <select id="persona-select"></select>
+      <button type="button" class="btn btn-quiet" id="new-persona-btn">New persona</button>
     </div>
+
+    <p class="local-status" id="local-status" role="status">Opening your personas…</p>
   </header>
 
-  <nav class="app-nav" role="tablist" aria-label="Main views">
-    <button type="button" class="app-nav-btn active" id="nav-studio" data-view="view-studio" role="tab" aria-selected="true">Persona Studio</button>
-    <button type="button" class="app-nav-btn" id="nav-guide" data-view="view-guide" role="tab" aria-selected="false">Storage Guide <span class="nav-new">New</span></button>
+  <nav class="app-nav" aria-label="Main views">
+    <button type="button" class="app-nav-btn active" id="nav-studio" data-view="view-studio" aria-current="page">Studio</button>
+    <button type="button" class="app-nav-btn" id="nav-guide" data-view="view-guide">Storage guide</button>
   </nav>
 
-  <main class="workspace-grid app-view" id="view-studio">
-    <!-- Left Column: Editor + Visual Card + Live Inspector -->
-    <section class="column">
-      <div class="panel">
-        <div class="panel-header">
-          <h2>1. Author Your Creative Persona</h2>
-          <span class="badge">Local Canonical Source</span>
-        </div>
-        <form id="persona-form" novalidate>
-          <div class="field">
-            <div class="field-label-row">
-              <label for="persona-name">Persona Name <span class="req">*</span></label>
-              <span class="counter" id="name-counter">0 / 64</span>
-            </div>
-            <input
-              type="text"
-              id="persona-name"
-              name="name"
-              placeholder="e.g. Ada Lovelace"
-              required
-            />
-          </div>
+  <!-- ===================================================== Studio -->
+  <main class="app-view studio" id="view-studio">
 
-          <div class="field">
-            <div class="field-label-row">
-              <label for="persona-bio">Biography / Creative Statement <span class="req">*</span></label>
-              <span class="counter" id="bio-counter">0 / 1000</span>
-            </div>
-            <textarea
-              id="persona-bio"
-              name="biography"
-              rows="5"
-              placeholder="Describe your creative practice, medium, and artistic statement..."
-              required
-            ></textarea>
-          </div>
-
-          <div class="field">
-            <div class="field-label-row">
-              <label for="persona-id">Canonical Subject URI (<code>@id</code>)</label>
-              <span class="hint">Defaults to <code>#me</code></span>
-            </div>
-            <input
-              type="text"
-              id="persona-id"
-              name="id"
-              placeholder="#me"
-              value="#me"
-            />
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="save-btn">
-              Save Local Persona
-            </button>
-            <span class="status-msg" id="save-status" role="status"></span>
-          </div>
-        </form>
-      </div>
-
-      <!-- Visual Persona Card Preview -->
-      <div class="panel persona-card">
-        <div class="persona-card-header">
-          <span class="persona-stamp">CREATIVEID PERSONA</span>
-          <span class="persona-id" id="card-id">#me</span>
+    <!-- First run / new persona -->
+    <section class="welcome" id="welcome" hidden aria-labelledby="welcome-title">
+      <h2 id="welcome-title">Make your first persona</h2>
+      <p>A persona is the name you work under, what you make, and who you make it with. It stays on this computer until you choose to publish it. You can have more than one.</p>
+      <form id="welcome-form" class="welcome-form" novalidate>
+        <label for="welcome-name">The name you're credited under</label>
+        <div class="inline-row">
+          <input type="text" id="welcome-name" autocomplete="off" placeholder="e.g. Ama Owusu, or a collective's name" />
+          <button type="submit" class="btn btn-primary">Create persona</button>
         </div>
-        <h3 class="persona-name" id="card-name">Unpublished Persona</h3>
-        <p class="persona-bio" id="card-bio">
-          Enter a name and biography above to preview and save your local CreativeID persona.
-        </p>
-        <div class="persona-meta">
-          <span>Last Modified: <strong id="card-modified">Never</strong></span>
-        </div>
-        <div class="publications-strip" id="publications-strip">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-
-      <!-- Live Protocol Payload Inspector -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>2. Live Dataset Inspector</h2>
-          <button type="button" class="btn btn-small" id="copy-payload-btn">Copy Payload</button>
-        </div>
-        <div class="tabs" role="tablist">
-          <button type="button" class="tab active" data-tab="canonicalJsonLd">Canonical JSON-LD</button>
-          <button type="button" class="tab" data-tab="publicJsonLd">Public JSON-LD</button>
-          <button type="button" class="tab" data-tab="atprotoRecord">ATProto Lexicon</button>
-          <button type="button" class="tab" data-tab="solidTurtle">Solid RDF Turtle</button>
-        </div>
-        <pre class="code-inspector"><code id="inspector-code">Loading...</code></pre>
-      </div>
+        <p class="field-error" id="welcome-error" role="alert"></p>
+        <button type="button" class="btn btn-quiet" id="welcome-cancel" hidden>Back to my personas</button>
+      </form>
     </section>
 
-    <!-- Right Column: Publishing Hub -->
-    <section class="column">
-      <div class="panel">
-        <div class="panel-header">
-          <h2>3. Publish to Online Data Stores</h2>
-          <span class="badge">Protocol Adapters</span>
+    <div class="studio-grid" id="studio" hidden>
+      <div class="editor" id="main" tabindex="-1">
+        <div class="section-tabs" role="tablist" aria-label="Persona sections">
+          <button type="button" role="tab" class="section-tab" id="tab-profile" aria-controls="sec-profile" aria-selected="true">Profile</button>
+          <button type="button" role="tab" class="section-tab" id="tab-works" aria-controls="sec-works" aria-selected="false" tabindex="-1">Works <span class="count" id="works-count"></span></button>
+          <button type="button" role="tab" class="section-tab" id="tab-connections" aria-controls="sec-connections" aria-selected="false" tabindex="-1">Connections <span class="count" id="connections-count"></span></button>
+          <button type="button" role="tab" class="section-tab" id="tab-private" aria-controls="sec-private" aria-selected="false" tabindex="-1">Private</button>
+          <button type="button" role="tab" class="section-tab" id="tab-publish" aria-controls="sec-publish" aria-selected="false" tabindex="-1">Publish</button>
         </div>
-        <p class="panel-intro">
-          Publish your canonical local persona to decentralized data stores or export as a standalone Linked Data file.
-        </p>
 
-        <!-- Adapter 1: AT Protocol PDS -->
-        <div class="adapter-card">
-          <div class="adapter-header">
-            <div>
-              <h3>AT Protocol PDS</h3>
-              <p class="adapter-desc">Collections: <code>com.cultureblocs.creative.profile</code> (rkey <code>self</code>), <code>.work</code> and <code>.connection</code></p>
+        <!-- Profile -->
+        <section class="section" id="sec-profile" role="tabpanel" aria-labelledby="tab-profile">
+          <form id="profile-form" novalidate>
+            <div class="field">
+              <div class="label-row"><label for="p-name">Name</label><span class="counter" id="p-name-count"></span></div>
+              <input type="text" id="p-name" autocomplete="off" required />
+              <p class="hint">The name you want to be credited under. One persona per name: a stage name and a legal name can be two personas.</p>
             </div>
-            <button type="button" class="btn btn-ghost btn-small" id="atproto-sandbox-btn">
-              Use Local Sandbox
-            </button>
+            <div class="field">
+              <div class="label-row"><label for="p-bio">About your practice</label><span class="counter" id="p-bio-count"></span></div>
+              <textarea id="p-bio" rows="6"></textarea>
+            </div>
+            <div class="field">
+              <label for="p-disciplines-input">Disciplines</label>
+              <div class="chips" id="p-disciplines" data-max="8" data-maxlen="64">
+                <ul class="chip-list" aria-label="Disciplines added"></ul>
+                <input type="text" id="p-disciplines-input" autocomplete="off" placeholder="Type one and press Enter" />
+              </div>
+              <p class="hint">In your own words, up to 8: painting, stand-up, curating, lighting design, sound art…</p>
+            </div>
+            <div class="field">
+              <label for="p-based">Based in</label>
+              <input type="text" id="p-based" autocomplete="off" placeholder="As precise as you like: a city, a country, or leave it out" />
+            </div>
+            <fieldset class="field repeat" id="p-links">
+              <legend>Links</legend>
+              <p class="hint">Your website, portfolio, a gallery or label page, socials. Up to 8.</p>
+              <div class="rows"></div>
+              <button type="button" class="btn btn-quiet add-row">Add a link</button>
+            </fieldset>
+            <fieldset class="field repeat" id="p-ids">
+              <legend>Identifiers elsewhere</legend>
+              <p class="hint">Only if you have them already: ISNI, ORCID, Wikidata and so on. Nothing here is required.</p>
+              <div class="rows"></div>
+              <button type="button" class="btn btn-quiet add-row">Add an identifier</button>
+            </fieldset>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">Save profile</button>
+              <p class="status" id="profile-status" role="status"></p>
+            </div>
+          </form>
+          <div class="danger-zone">
+            <button type="button" class="btn btn-quiet" id="trash-btn">Move this persona to the trash</button>
+            <span class="confirm" id="trash-confirm" hidden>
+              Its file moves to <code>data/personas/.trash/</code>; nothing published is removed.
+              <button type="button" class="btn btn-danger" id="trash-yes">Move to trash</button>
+              <button type="button" class="btn btn-quiet" id="trash-no">Keep it</button>
+            </span>
           </div>
-          <form id="atproto-form">
-            <div class="field-grid">
+        </section>
+
+        <!-- Works -->
+        <section class="section" id="sec-works" role="tabpanel" aria-labelledby="tab-works" hidden>
+          <div class="section-head">
+            <p class="lede">Things you've made, alone or with others. Saying a work is yours is enough; nobody has to approve it.</p>
+            <button type="button" class="btn btn-primary" id="add-work-btn">Add a work</button>
+          </div>
+          <form id="work-form" class="item-form" novalidate hidden>
+            <h2 id="work-form-title">New work</h2>
+            <div class="field">
+              <label for="w-title">Title</label>
+              <input type="text" id="w-title" autocomplete="off" required />
+            </div>
+            <div class="field-pair">
               <div class="field">
-                <label for="atproto-pds">PDS Server URL</label>
-                <input type="url" id="atproto-pds" value="https://bsky.social" required />
+                <label for="w-date">When</label>
+                <input type="text" id="w-date" autocomplete="off" placeholder="2024, Spring 2019, ongoing…" />
               </div>
               <div class="field">
-                <label for="atproto-handle">Handle or DID</label>
-                <input type="text" id="atproto-handle" placeholder="alice.bsky.social" required />
+                <label for="w-url">Where it lives online</label>
+                <input type="url" id="w-url" autocomplete="off" placeholder="https://…" />
               </div>
             </div>
             <div class="field">
-              <label for="atproto-password">App Password</label>
-              <input type="password" id="atproto-password" placeholder="xxxx-xxxx-xxxx-xxxx" required />
+              <label for="w-desc">Description</label>
+              <textarea id="w-desc" rows="4"></textarea>
             </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-accent">Publish to ATProto PDS</button>
-              <span class="status-msg" id="atproto-status"></span>
-            </div>
-          </form>
-        </div>
-
-        <!-- Adapter 2: Solid Pod -->
-        <div class="adapter-card">
-          <div class="adapter-header">
-            <div>
-              <h3>Solid Data Pod</h3>
-              <p class="adapter-desc">Writes Linked Data via HTTP <code>PUT</code> (<code>text/turtle</code> or <code>application/ld+json</code>)</p>
-            </div>
-            <button type="button" class="btn btn-ghost btn-small" id="solid-sandbox-btn">
-              Use Local Sandbox
-            </button>
-          </div>
-          <form id="solid-form">
+            <fieldset class="field repeat" id="w-credits">
+              <legend>Credits</legend>
+              <p class="hint">Who made it, including you, and their role. Add someone's DID if you know it, so their own record can match yours.</p>
+              <div class="rows"></div>
+              <button type="button" class="btn btn-quiet add-row">Add a credit</button>
+            </fieldset>
             <div class="field">
-              <label for="solid-url">Target Solid Resource URL</label>
-              <input
-                type="url"
-                id="solid-url"
-                placeholder="https://alice.solidcommunity.net/public/creativeid.ttl"
-                required
-              />
-            </div>
-            <div class="field-grid">
-              <div class="field">
-                <label for="solid-format">RDF Serialization</label>
-                <select id="solid-format">
-                  <option value="turtle">RDF Turtle (.ttl)</option>
-                  <option value="jsonld">JSON-LD (.jsonld)</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="solid-token">Access Token (Optional for Public Containers)</label>
-                <input type="password" id="solid-token" placeholder="Bearer token (if required)" />
+              <label for="w-tags-input">Tags</label>
+              <div class="chips" id="w-tags" data-max="8" data-maxlen="64">
+                <ul class="chip-list" aria-label="Tags added"></ul>
+                <input type="text" id="w-tags-input" autocomplete="off" placeholder="Type one and press Enter" />
               </div>
             </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-accent">Publish to Solid Pod</button>
-              <span class="status-msg" id="solid-status"></span>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary" id="work-save">Save work</button>
+              <button type="button" class="btn btn-quiet" id="work-cancel">Cancel</button>
+              <p class="status" id="work-status" role="status"></p>
             </div>
           </form>
-        </div>
+          <ol class="item-list" id="works-list" aria-label="Works"></ol>
+          <p class="empty" id="works-empty">No works yet. Add the first thing you'd want someone to find.</p>
+        </section>
 
-        <!-- Adapter 3: Static File Export -->
-        <div class="adapter-card">
-          <div class="adapter-header">
-            <div>
-              <h3>Static Dataset Export</h3>
-              <p class="adapter-desc">For personal domains, GitHub Pages, S3, or IPFS</p>
-            </div>
+        <!-- Connections -->
+        <section class="section" id="sec-connections" role="tabpanel" aria-labelledby="tab-connections" hidden>
+          <div class="section-head">
+            <p class="lede">Who you've worked with and where: a venue you performed at, a gallery that showed you, a collective you belong to. It's your side of the story; when they say the same, anyone can see the two match.</p>
+            <button type="button" class="btn btn-primary" id="add-conn-btn">Add a connection</button>
           </div>
-          <form id="static-form">
-            <div class="field-grid">
+          <form id="conn-form" class="item-form" novalidate hidden>
+            <h2 id="conn-form-title">New connection</h2>
+            <div class="field-pair">
               <div class="field">
-                <label for="static-format">Format</label>
-                <select id="static-format">
-                  <option value="jsonld">JSON-LD (creativeid.jsonld)</option>
-                  <option value="turtle">RDF Turtle (creativeid.ttl)</option>
-                </select>
+                <label for="c-rel">I…</label>
+                <select id="c-rel"></select>
               </div>
-              <div class="field">
-                <label for="static-url">Public Hosting URL (Optional <code>@id</code>)</label>
-                <input type="url" id="static-url" placeholder="https://example.com/creativeid.jsonld#me" />
+              <div class="field" id="c-rel-other-field" hidden>
+                <label for="c-rel-other">Your own word for it</label>
+                <input type="text" id="c-rel-other" autocomplete="off" placeholder="e.g. commissioned" />
               </div>
             </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-secondary">Export to data/exports/</button>
-              <button type="button" class="btn btn-ghost" id="download-static-btn">Download File</button>
-              <span class="status-msg" id="static-status"></span>
+            <div class="field">
+              <label for="c-target">With or at</label>
+              <div class="inline-row">
+                <input type="text" id="c-target" autocomplete="off" placeholder="A handle (ivyhouse.example), a DID, or an at:// link to a record" />
+                <button type="button" class="btn btn-quiet" id="c-lookup">Look up</button>
+              </div>
+              <p class="hint" id="c-target-hint">Looking up pins a record to its current version, so later changes to it show up.</p>
+            </div>
+            <div class="field">
+              <label for="c-name">Their name, as you'd write it</label>
+              <input type="text" id="c-name" autocomplete="off" placeholder="The Ivy House" />
+            </div>
+            <div class="field-pair">
+              <div class="field">
+                <label for="c-role">Your role</label>
+                <input type="text" id="c-role" autocomplete="off" placeholder="e.g. lighting, guest curator" />
+              </div>
+              <div class="field">
+                <label for="c-note">Note</label>
+                <input type="text" id="c-note" autocomplete="off" />
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">Save connection</button>
+              <button type="button" class="btn btn-quiet" id="conn-cancel">Cancel</button>
+              <p class="status" id="conn-status" role="status"></p>
             </div>
           </form>
-        </div>
+          <ol class="item-list" id="conns-list" aria-label="Connections"></ol>
+          <p class="empty" id="conns-empty">No connections yet.</p>
+        </section>
+
+        <!-- Private -->
+        <section class="section" id="sec-private" role="tabpanel" aria-labelledby="tab-private" hidden>
+          <p class="lede">Details you keep for yourself: kept in this persona's file on this computer and never published, whatever you publish to.</p>
+          <div class="suggestions" id="private-suggestions"></div>
+          <form id="private-form" novalidate>
+            <div class="field-pair">
+              <div class="field">
+                <label for="pv-key">What it is</label>
+                <input type="text" id="pv-key" autocomplete="off" placeholder="e.g. Legal name" />
+              </div>
+              <div class="field">
+                <label for="pv-value">Detail</label>
+                <input type="text" id="pv-value" autocomplete="off" />
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary">Keep privately</button>
+              <p class="status" id="private-status" role="status"></p>
+            </div>
+          </form>
+          <dl class="private-list" id="private-list"></dl>
+        </section>
+
+        <!-- Publish -->
+        <section class="section" id="sec-publish" role="tabpanel" aria-labelledby="tab-publish" hidden>
+          <p class="lede">Publishing copies the public parts of this persona somewhere others can find them. Your Private details never leave this computer. Publish again any time; it updates what's there.</p>
+
+          <article class="target" aria-labelledby="t-atproto">
+            <header>
+              <h2 id="t-atproto">AT Protocol (Bluesky and other Atmosphere apps)</h2>
+              <p class="target-state" id="atproto-state"></p>
+            </header>
+            <p class="plan" id="atproto-plan" role="status"></p>
+            <form id="atproto-form" novalidate>
+              <div class="field-pair">
+                <div class="field">
+                  <label for="a-pds">PDS address</label>
+                  <input type="url" id="a-pds" value="https://bsky.social" />
+                </div>
+                <div class="field">
+                  <label for="a-handle">Handle or DID</label>
+                  <input type="text" id="a-handle" autocomplete="username" placeholder="you.bsky.social" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="a-password">App Password</label>
+                <input type="password" id="a-password" autocomplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx" />
+                <p class="hint">Make one in your account's settings. It's used for this publish only and isn't saved.</p>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn-primary">Publish to AT Protocol</button>
+                <button type="button" class="btn btn-quiet" id="a-sandbox">Try it locally</button>
+                <p class="status" id="atproto-status" role="status"></p>
+              </div>
+            </form>
+          </article>
+
+          <article class="target" aria-labelledby="t-static">
+            <header>
+              <h2 id="t-static">A file for your own website</h2>
+              <p class="target-state" id="static-state"></p>
+            </header>
+            <p class="hint">Put it at <code>/.well-known/creativeid.jsonld</code> on your domain and directories can find you from the domain alone.</p>
+            <form id="static-form" novalidate>
+              <div class="field-pair">
+                <div class="field">
+                  <label for="s-format">Format</label>
+                  <select id="s-format">
+                    <option value="jsonld">JSON-LD (creativeid.jsonld)</option>
+                    <option value="turtle">Turtle (creativeid.ttl)</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="s-url">Where it will be hosted</label>
+                  <input type="url" id="s-url" autocomplete="off" placeholder="https://yourdomain.com/.well-known/creativeid.jsonld" />
+                </div>
+              </div>
+              <div class="actions">
+                <button type="button" class="btn btn-primary" id="s-download">Download file</button>
+                <button type="submit" class="btn btn-quiet">Save a copy in data/exports</button>
+                <p class="status" id="static-status" role="status"></p>
+              </div>
+            </form>
+          </article>
+
+          <article class="target" aria-labelledby="t-solid">
+            <header>
+              <h2 id="t-solid">Solid Pod</h2>
+              <p class="target-state" id="solid-state"></p>
+            </header>
+            <form id="solid-form" novalidate>
+              <div class="field">
+                <label for="o-url">Resource address</label>
+                <input type="url" id="o-url" autocomplete="off" placeholder="https://you.solidcommunity.net/public/creativeid.ttl" />
+              </div>
+              <div class="field-pair">
+                <div class="field">
+                  <label for="o-format">Format</label>
+                  <select id="o-format">
+                    <option value="turtle">Turtle</option>
+                    <option value="jsonld">JSON-LD</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="o-token">Access token (if the folder isn't public)</label>
+                  <input type="password" id="o-token" autocomplete="off" />
+                </div>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn-primary">Publish to Solid</button>
+                <button type="button" class="btn btn-quiet" id="o-sandbox">Try it locally</button>
+                <p class="status" id="solid-status" role="status"></p>
+              </div>
+            </form>
+          </article>
+        </section>
       </div>
-    </section>
+
+      <!-- Live preview -->
+      <aside class="preview" aria-labelledby="label-title">
+        <h2 class="preview-heading" id="label-title">How it reads</h2>
+        <div class="wall-label" id="wall-label"></div>
+
+        <details class="inspector">
+          <summary>What gets published</summary>
+          <div class="inspector-tabs" role="tablist" aria-label="Published formats">
+            <button type="button" role="tab" class="inspector-tab" data-format="atproto" aria-selected="true">AT Protocol records</button>
+            <button type="button" role="tab" class="inspector-tab" data-format="jsonld" aria-selected="false" tabindex="-1">JSON-LD</button>
+            <button type="button" role="tab" class="inspector-tab" data-format="turtle" aria-selected="false" tabindex="-1">Turtle</button>
+          </div>
+          <pre class="code" tabindex="0" aria-label="Published data"><code id="inspector-code"></code></pre>
+          <button type="button" class="btn btn-quiet" id="copy-btn">Copy</button>
+        </details>
+      </aside>
+    </div>
   </main>
 
+  <!-- ===================================================== Storage guide -->
   <main class="app-view guide" id="view-guide" hidden>
     <section class="guide-hero">
       <h2>Where should your persona live?</h2>
-      <p>Answer a few questions about <strong>who should see each part of your data</strong> and <strong>what you want it to do</strong>. We'll recommend an AT Protocol PDS, a Solid Pod, static hosting — or a combination.</p>
+      <p>Answer a few questions about <strong>who should see each part of your information</strong> and <strong>what you want it to do</strong>. You'll get a recommendation: an AT Protocol account, a Solid Pod, your own website, or a mix. Anything you mark as private here is suggested in the Studio's Private section.</p>
       <ol class="stepper" id="wizard-stepper">
-        <li class="active" data-step="0"><span>1</span>Your data</li>
+        <li class="active" data-step="0"><span>1</span>Your information</li>
         <li data-step="1"><span>2</span>Your goals</li>
         <li data-step="2"><span>3</span>Recommendation</li>
       </ol>
     </section>
 
-    <!-- Step 1 -->
     <section class="panel wizard-step" id="wizard-step-0">
-      <div class="panel-header"><h2>1. Who should see each part of your persona?</h2></div>
-      <p class="panel-intro">Tick the kinds of information you plan to include, then choose who may see it. <strong>AT Protocol PDS and static hosting are public-only</strong> — anything else needs access control.</p>
+      <div class="panel-header"><h2>Who should see each part of your persona?</h2></div>
+      <p class="panel-intro">Tick what you plan to include, then choose who may see it. <strong>AT Protocol and a file on your website are public</strong>; anything else needs access control.</p>
       <div class="field-visibility" id="field-visibility"></div>
     </section>
 
-    <!-- Step 2 -->
     <section class="panel wizard-step" id="wizard-step-1" hidden>
-      <div class="panel-header"><h2>2. What matters to you?</h2></div>
+      <div class="panel-header"><h2>What matters to you?</h2></div>
       <div class="questions" id="wizard-questions"></div>
     </section>
 
-    <!-- Step 3 -->
     <section class="wizard-step" id="wizard-step-2" hidden>
       <div id="wizard-result"></div>
     </section>

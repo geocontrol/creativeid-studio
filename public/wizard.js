@@ -6,13 +6,13 @@ const STORAGE_KEY = "creativeid.storageGuide.v1";
 
 /** Field groups a CreativeID persona may contain, with a sensible default visibility. */
 const FIELD_GROUPS = [
-  { id: "identity", label: "Name, biography & genres", hint: "Your public creative identity", default: "public", included: true },
-  { id: "links", label: "Website, socials & press photos", hint: "Links and promotional assets", default: "public", included: true },
-  { id: "booking", label: "Booking & management contacts", hint: "Email, phone, agent details", default: "shared", included: false },
-  { id: "commercial", label: "Fees, tech rider & availability", hint: "Info for promoters and festivals", default: "shared", included: false },
-  { id: "rights", label: "Legal name & rights identifiers", hint: "IPI, ISNI, ISRC ownership, PRO membership", default: "shared", included: false },
-  { id: "payment", label: "Payment & royalty details", hint: "Bank, tax and split information", default: "private", included: false },
-  { id: "drafts", label: "Drafts & unreleased work", hint: "Notes, demos, works in progress", default: "private", included: false },
+  { id: "identity", label: "Name, bio & disciplines", hint: "The public face of your practice", default: "public", included: true },
+  { id: "links", label: "Website, socials & press images", hint: "Links and promotional material", default: "public", included: true },
+  { id: "booking", label: "Booking & representation contacts", hint: "Email, phone, agent, gallery or manager", default: "shared", included: false },
+  { id: "commercial", label: "Fees, technical needs & availability", hint: "For venues, galleries, festivals and commissioners", default: "shared", included: false },
+  { id: "rights", label: "Legal name & registration identifiers", hint: "e.g. ISNI, ORCID, collecting-society or union numbers", default: "shared", included: false },
+  { id: "payment", label: "Payment & tax details", hint: "Bank, tax, royalty or fee splits", default: "private", included: false },
+  { id: "drafts", label: "Drafts & work in progress", hint: "Notes, sketches, unreleased or unshown work", default: "private", included: false },
 ];
 
 const VISIBILITY = {
@@ -373,7 +373,8 @@ function showView(id) {
   document.querySelectorAll(".app-nav-btn").forEach((b) => {
     const on = b.dataset.view === id;
     b.classList.toggle("active", on);
-    b.setAttribute("aria-selected", String(on));
+    if (on) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
   });
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

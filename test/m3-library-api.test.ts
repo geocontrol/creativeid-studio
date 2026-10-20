@@ -315,21 +315,6 @@ describe("M3 · persona API (network switched off)", () => {
     assert.deepEqual((await call("GET", `/api/personas/${id}`)).json.persona, before);
   });
 
-  it("keeps the v1 UI's /api/persona working on the first persona without losing new fields", async () => {
-    const list = (await call("GET", "/api/personas")).json.personas;
-    const firstId = list[0].personaId;
-    await call("PUT", `/api/personas/${firstId}`, { name: "Delia Derbyshire", disciplines: ["tape music"] });
-
-    const legacy = await call("PUT", "/api/persona", { name: "Delia Derbyshire", biography: "Updated via the old UI." });
-    assert.equal(legacy.status, 200);
-    assert.equal(legacy.json.persona.description, "Updated via the old UI.");
-    assert.equal(legacy.json.persona["@id"], "#me");
-
-    const now = (await call("GET", `/api/personas/${firstId}`)).json.persona;
-    assert.equal(now.profile.bio, "Updated via the old UI.");
-    assert.deepEqual(now.profile.disciplines, ["tape music"], "fields the old UI can't see are kept");
-  });
-
   it("moves a persona to the trash via DELETE", async () => {
     const id = (await call("POST", "/api/personas", { name: "Temporary" })).json.persona.personaId;
     const del = await call("DELETE", `/api/personas/${id}`);
