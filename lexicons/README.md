@@ -6,7 +6,7 @@ schema authority for `com.cultureblocs.*` is cultureblocs.com
 `cultureblocs-string` repository.
 
 - Copied from: `cultureblocs-string/lexicons`
-- Source commit: 5ddcd13 2026-09-14
+- Source commit: 970b41d 2026-10-20
 - Files: `com/cultureblocs/defs.json`, `com/cultureblocs/creative/profile.json`, `com/cultureblocs/creative/work.json`, `com/cultureblocs/creative/connection.json`
 
 Every record the studio sends to an ATProto PDS is validated against these
